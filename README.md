@@ -23,3 +23,9 @@ npm run build
 
 ## Important security note
 No Login means possession of the published GitHub Pages URL is effectively access to this IJ web application. The v13 Supabase policies intentionally permit the anonymous web role to read/write the IJ maintenance module. Do not publish this URL broadly or use this mode if the system later needs multiple users or confidential access control.
+
+
+## v13.3 branding
+- Replaced the web/app icon with the new pastel-blue IJ gear and wrench logo.
+- Transparent browser/favicon artwork with no white border.
+- Sidebar and startup screen now use the same IJ logo.

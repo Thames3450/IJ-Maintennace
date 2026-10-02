@@ -55,7 +55,7 @@ export default function Layout({ page, setPage, profile, onLogout, onRefresh, on
   return <div className="app-frame enterprise-shell">
     <aside className="sidebar enterprise-sidebar">
       <button className="brand enterprise-brand brand-home-button" onClick={()=>go('menu')}>
-        <div className="brand-logo">IJ</div>
+        <div className="brand-logo"><img src="./ij-maintenance-logo.png" alt="IJ Maintenance" /></div>
         <div><b>IJ Maintenance</b><span>Unified Maintenance System</span></div>
       </button>
       <div className="system-identity">
@@ -72,7 +72,7 @@ export default function Layout({ page, setPage, profile, onLogout, onRefresh, on
         </section>)}
       </nav>
       <div className="side-bottom">
-        <div className="system-version-card"><span>System</span><b>IJ-MNT v13.0</b><small>Direct Access · No Login</small></div>
+        <div className="system-version-card"><span>System</span><b>IJ-MNT v13.3</b><small>Direct Access · No Login</small></div>
         <div className="user-card"><div className="avatar">{profile?.full_name?.slice(0,1)||'U'}</div><div><b>{profile?.full_name}</b><span>{profile?.employee_code} · {profile?.role}</span></div></div>
       </div>
     </aside>
@@ -94,7 +94,7 @@ export default function Layout({ page, setPage, profile, onLogout, onRefresh, on
         <div><span className="status-dot"/><b>Database connected</b><small>MPR Maintenance · ฐานข้อมูลเดียวกัน</small></div>
         <div><CheckCircle2 size={15}/><b>Direct access</b><small>เปิดใช้งานทันที · ไม่ต้อง Login</small></div>
         <div><RefreshCcw size={14}/><b>Last sync {lastSync}</b><small>อัปเดตข้อมูลล่าสุด</small></div>
-        <div className="statusbar-version"><b>v13.0</b><small>No Login Mode</small></div>
+        <div className="statusbar-version"><b>v13.3</b><small>No Login Mode</small></div>
       </div>
 
       <div className="page-wrap enterprise-page-wrap">{children}</div>
