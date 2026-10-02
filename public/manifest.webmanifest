@@ -1,0 +1,21 @@
+{
+  "name": "IJ Maintenance · Unified System",
+  "short_name": "IJ Maintenance",
+  "description": "IJ Department Maintenance Management System",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f8fc",
+  "theme_color": "#0b2f62",
+  "icons": [
+    {
+      "src": "./ij-maintenance-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./ij-maintenance-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
