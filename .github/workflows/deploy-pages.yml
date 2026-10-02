@@ -25,13 +25,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+
+      # Important: never reuse node_modules committed from Windows.
+      - name: Remove old dependencies
+        run: rm -rf node_modules
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        shell: bash
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
 
+      # Run Vite through Node directly so Linux executable bits cannot break the build.
       - name: Build
-        run: npm run build
+        run: node ./node_modules/vite/bin/vite.js build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
