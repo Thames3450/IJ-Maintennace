@@ -1,0 +1,11 @@
+import React, { useMemo, useState } from 'react'
+import { Search, PlusCircle } from '../icons.jsx'
+import { Button, Empty, PageIntro, SelectMenu } from '../components/UI.jsx'
+import { fmtDateTime, rolePlanner } from '../lib/utils.js'
+
+export default function RepairHistory({profile,repairs,machines,onCreateTPM}){
+ const [q,setQ]=useState(''),[machine,setMachine]=useState('')
+ const selected=machines.find(m=>m.id===machine)
+ const rows=useMemo(()=>repairs.filter(r=>!machine||r.machine_id===machine||r.machine_no_snapshot===selected?.machine_no).filter(r=>!q||[r.machine_no_snapshot,r.symptom,r.cause,r.action_taken,r.technician_name_snapshot].some(v=>String(v||'').toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>new Date(b.started_at)-new Date(a.started_at)),[repairs,machine,q,selected])
+ return <><PageIntro title="Repair History" th="ประวัติงานซ่อม" description="Existing MPR repair records can be converted directly into TPM follow-up work. · ใช้ประวัติซ่อมเดิมต่อยอดเป็น TPM ได้ทันที"/><section className="compact-filter-bar"><div className="search-box"><Search size={17}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search symptom / cause / action · ค้นหาอาการ / สาเหตุ / การแก้ไข"/></div><SelectMenu value={machine} onChange={setMachine} searchable options={[{value:'',label:'All machines',sub:'ทุกเครื่อง'},...machines.map(m=>({value:m.id,label:m.machine_no,sub:m.machine_name||'เครื่องจักร'}))]}/></section><div className="table-card"><div className="table-scroll"><table className="pro-table bilingual-table"><thead><tr><th>Date<small>วันที่</small></th><th>Machine<small>เครื่อง</small></th><th>Symptom<small>อาการ</small></th><th>Cause<small>สาเหตุ</small></th><th>Action<small>การแก้ไข</small></th><th>Loss</th><th>Technician<small>ช่าง</small></th><th></th></tr></thead><tbody>{rows.slice(0,500).map(r=><tr key={r.id}><td>{fmtDateTime(r.started_at)}</td><td><b>{r.machine_no_snapshot}</b></td><td>{r.symptom}</td><td>{r.cause}</td><td>{r.action_taken}</td><td><strong>{Number(r.loss_time_min)||0}</strong> min</td><td>{r.technician_name_snapshot||'-'}</td><td>{rolePlanner(profile.role)&&<Button size="sm" variant="soft" icon={PlusCircle} onClick={()=>onCreateTPM(r)}>Create TPM <small>วาง TPM</small></Button>}</td></tr>)}</tbody></table>{!rows.length&&<Empty/>}</div></div></>
+}

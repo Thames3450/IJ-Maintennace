@@ -1,0 +1,6 @@
+-- Database-side no-login mode was applied to the MPR Maintenance Supabase project.
+-- It creates a non-auth IJ web operator profile and IJ-scoped anonymous RLS policies
+-- for the tables used by IJ Maintenance v13.
+--
+-- IMPORTANT: this mode intentionally treats access to the published web URL as access
+-- to the IJ maintenance application. Do not enable this on confidential/publicly shared sites.
