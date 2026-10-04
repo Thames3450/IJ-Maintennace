@@ -12,6 +12,9 @@ const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright')
 const date=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'})
 const {default:jsQR}=await import('jsqr')
 const {PNG}=await import('pngjs')
+const samplePhoto=new PNG({width:64,height:40})
+for(let i=0;i<samplePhoto.data.length;i+=4){samplePhoto.data[i]=58;samplePhoto.data[i+1]=120;samplePhoto.data[i+2]=190;samplePhoto.data[i+3]=255}
+const photoBytes=PNG.sync.write(samplePhoto)
 const results=[]
 const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5176'],{cwd:root,stdio:['ignore','pipe','pipe']})
 await new Promise((resolve,reject)=>{server.stdout.on('data',d=>{if(d.toString().includes('Local:'))resolve()});server.stderr.on('data',d=>process.stderr.write(d));server.on('exit',()=>reject(new Error('Vite exited')))})
@@ -28,14 +31,24 @@ try{
   const pmOrder={id:'pm-order1',department_id:'dept',machine_id:'m1',standard_id:'std1',standard_snapshot:structuredClone(pmStandard),machine_no_snapshot:'650T-8',machine_name_snapshot:'เครื่องทดสอบ 1',due_date:date,status:'planned',results:[],stop_minutes:0}
   const tables={ij_deleted_records:[],ij_pm_standards:[pmStandard],ij_pm_orders:[pmOrder],machines:[m1,m2],ij_tpm_jobs:[{...baseJob,id:'partial-job',plan_group_id:'g1',job_status:'partial'},{...baseJob,id:'active-job',plan_group_id:'g2',job_status:'in_progress'},{...baseJob,id:'postponed-job',plan_group_id:'g3',job_status:'postponed'}],ij_tpm_executions:[],ij_tpm_findings:[{id:'f1',department_id:'dept',machine_id:'m1',machines:m1,priority:'B',finding:'สายลมรั่ว (ข้อมูลทดสอบ)',status:'open',created_at:new Date().toISOString()}],ij_inspection_templates:native?[{id:'t1',department_id:'dept',name:'รายการตรวจทดสอบ',is_active:true}]:[],ij_inspection_template_items:native?[{id:'item1',template_id:'t1',item_name:'ค่าที่วัด',value_type:'numeric',unit:'bar',min_value:0,max_value:10,is_active:true,criticality:'B'}]:[],pm_schedule:[{id:'pm1',department_id:'dept',machine_id:'m1',due_date:date,machine_no_snapshot:'650T-8',plan_title_snapshot:'PM ทดสอบวันนี้',status:'scheduled'}],spare_requests:[{id:'sp1',department_id:'dept',machine_id:'m1',machine:m1,status:'new',part_name:'สายลมทดสอบ',requested_reason:'ทดสอบระบบ',quantity:1,created_at:new Date().toISOString()}],kpi_settings:[{id:'machine-setting',dept_code:'IJ',machine_no:'650T-8',hours_per_day:24,target_availability:90}],ij_condition_inspections:[],ij_condition_results:[],ij_condition_result_attachments:[],ij_finding_attachments:[],ij_opportunities:[],ij_tpm_job_assignees:[],ij_maintenance_timeline:[]}
   let counter=0,failTable='',failMethod='',failAfter=0,emptyPatch=false,delayTimeline=false
+  let signCounter=0,failSignBatch=false
+  const storageRequests=[],photoErrors=new Set(),expiredTokens=new Set(),brokenPhotoPaths=new Set()
   page.on('pageerror',e=>errors.push(e.message))
   await page.route('https://hftlogubohbjiivcvkut.supabase.co/**',async route=>{
    const req=route.request(),url=new URL(req.url()),table=url.pathname.split('/').pop(),method=req.method();
    if(url.pathname.startsWith('/storage/v1/')){
-    if(method==='POST'&&url.pathname.includes('/object/sign/')){const body=req.postDataJSON();return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body.paths.map(p=>({path:p,signedURL:`/object/public/ij-inspection-photos/${p}`})))})}
+    storageRequests.push({method,path:url.pathname})
+    if(method==='POST'&&url.pathname.includes('/object/sign/')){
+     if(failSignBatch){failSignBatch=false;return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Simulated signing failure'})})}
+     const body=req.postDataJSON(),bucket=url.pathname.split('/').pop()
+     return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body.paths.map(p=>photoErrors.has(p)?{path:p,error:'Object not found',signedURL:null}:{path:p,signedURL:`/object/sign/${bucket}/${p}?token=photo-${++signCounter}`}))})
+    }
     if(method==='POST')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({Key:'test-photo',Id:'photo'})})
     if(method==='DELETE')return route.fulfill({status:200,contentType:'application/json',body:'[]'})
-    return route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64')})
+    if(url.pathname.includes('/object/public/'))return route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'Bucket is private'})})
+    const photoPath=decodeURIComponent(url.pathname.split('/object/sign/')[1]?.split('/').slice(1).join('/')||'')
+    if(expiredTokens.has(url.searchParams.get('token'))||brokenPhotoPaths.has(photoPath))return route.fulfill({status:403,contentType:'application/json',body:JSON.stringify({message:'Photo unavailable'})})
+    return route.fulfill({status:200,contentType:'image/png',body:photoBytes})
    }
    if(table==='app_profiles'){return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(url.searchParams.has('username')?{id:'profile',full_name:'ผู้ทดสอบ',role:'admin',department_id:'dept'}:[{id:'tech1',full_name:'ช่างทดสอบ',role:'technician',department_id:'dept'}])})}
    if(table==='departments')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:'dept',dept_code:'IJ'})})
@@ -88,7 +101,7 @@ try{
   })
   await page.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,contentType:'text/css',body:''}))
   await page.goto('http://127.0.0.1:5176');await page.locator('.start-task-panel').waitFor()
-  return {page,context,tables,writes,errors,fail:(table,method,after=0)=>{failTable=table;failMethod=method;failAfter=after},emptyPatch:()=>{emptyPatch=true},delayTimeline:()=>{delayTimeline=true}}
+  return {page,context,tables,writes,errors,storageRequests,photoErrors,brokenPhotoPaths,expirePhoto:url=>expiredTokens.add(new URL(url).searchParams.get('token')),failSigningOnce:()=>{failSignBatch=true},fail:(table,method,after=0)=>{failTable=table;failMethod=method;failAfter=after},emptyPatch:()=>{emptyPatch=true},delayTimeline:()=>{delayTimeline=true}}
  }
  const go=async(page,id)=>{await page.evaluate(x=>{location.hash=x},id);await page.waitForTimeout(90)}
  const choose=async(page,trigger,label)=>{await trigger.click();const options=page.locator('.select-portal [role="option"]');await options.filter({hasText:label}).first().click();assert.equal(await page.locator('.select-portal').count(),0)}
@@ -123,7 +136,9 @@ try{
  await check('abnormal inspection creates follow-up with photo evidence',async()=>{
   const input=page.locator('.inspection-check-row').first().locator('input[type=file]:not([capture])');await input.setInputFiles({name:'test.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64')})
   await page.getByRole('button',{name:/Save Inspection/}).click();await page.locator('[role=dialog]').waitFor({state:'hidden'});assert.equal(tables.ij_tpm_findings.length,2);assert.equal(tables.ij_condition_result_attachments.length,1)
-  await go(page,'defects');const card=page.locator('.defect-card').filter({hasText:'พบลมรั่วที่ข้อต่อ'});assert.equal(await card.locator('.defect-photo-gallery img').count(),1);await go(page,'weekly')
+  assert.equal(tables.ij_condition_result_attachments[0].public_url,null)
+  await go(page,'defects');const card=page.locator('.defect-card').filter({hasText:'พบลมรั่วที่ข้อต่อ'});await card.locator('.defect-photo-gallery img').waitFor();await card.locator('.defect-photo-gallery img').evaluate(img=>img.decode());assert.equal(await card.locator('.defect-photo-gallery img').evaluate(img=>img.naturalWidth),64)
+  await go(page,'inspection');await page.getByRole('button',{name:'ดูผลตรวจ'}).first().click();await page.locator('.inspection-result-list img').waitFor();await page.locator('.inspection-result-list img').evaluate(img=>img.decode());assert.equal(await page.locator('.inspection-result-list img').evaluate(img=>img.naturalWidth),64);await page.locator('[role=dialog]').getByRole('button',{name:/Close dialog/}).click();await go(page,'weekly')
  })
  await check('partial work resumes; start explicitly updates job state',async()=>{
   await go(page,'weekly');const row=page.locator('.job-row-pro').filter({hasText:'Partial'});await row.getByRole('button',{name:/Resume/}).click();await page.waitForFunction(()=>document.querySelectorAll('.job-row-pro').length>=3);await page.waitForTimeout(120);assert.equal(tables.ij_tpm_jobs.find(j=>j.id==='partial-job').job_status,'in_progress')
@@ -274,6 +289,39 @@ try{
  await check('removing an unsaved plan row asks for confirmation before discarding it',async()=>{
   await go(wp,'weekly');await wp.locator('.page-intro-actions .btn').click();await wp.getByRole('button',{name:/Add Machine/}).click();let dismissed=false;wp.once('dialog',async d=>{dismissed=true;await d.dismiss()});await wp.locator('.machine-job-card').last().getByRole('button',{name:/Remove/}).click();assert.equal(dismissed,true);assert.equal(await wp.locator('.machine-job-card').count(),2);wp.once('dialog',d=>d.accept());await wp.locator('.machine-job-card').last().getByRole('button',{name:/Remove/}).click();assert.equal(await wp.locator('.machine-job-card').count(),1);await wp.getByRole('button',{name:/Cancel/}).click()
  })
- fs.writeFileSync(path.join(root,'docs/browser-test-results.json'),JSON.stringify({scope:'Local browser with mocked Supabase; no production writes',results},null,2))
+ const photoFixture=await fixture(),pp=photoFixture.page,pt=photoFixture.tables
+ const inspectionPhotoId='private-photo-inspection',photoPath1='230T-5/private-photo-inspection/old.jpg',photoPath2='230T-5/private-photo-inspection/new.jpg'
+ pt.machines[0].machine_no='230T-5'
+ pt.ij_condition_inspections.push({id:inspectionPhotoId,department_id:'dept',machine_id:'m1',machines:pt.machines[0],inspection_date:date,created_at:new Date().toISOString(),overall_status:'abnormal',condition_score:55,inspector_name_snapshot:'ผู้ทดสอบรูป'})
+ pt.ij_condition_results.push({id:'photo-result-1',inspection_id:inspectionPhotoId,finding_id:'f1',item_name_snapshot:'Air tubes & couplers',result_status:'watch',note:'ทดสอบรูปเก่าที่บันทึกลิงก์ public'},{id:'photo-result-2',inspection_id:inspectionPhotoId,finding_id:'f1',item_name_snapshot:'Hydraulic leaks & hoses',result_status:'abnormal',note:'ทดสอบรูปใหม่ที่เก็บเฉพาะ path'})
+ pt.ij_condition_result_attachments.push({id:'photo-old',inspection_id:inspectionPhotoId,result_id:'photo-result-1',storage_bucket:'ij-inspection-photos',storage_path:photoPath1,file_name:'รูปเก่า.jpg',public_url:`https://hftlogubohbjiivcvkut.supabase.co/storage/v1/object/public/ij-inspection-photos/${photoPath1}`},{id:'photo-new',inspection_id:inspectionPhotoId,result_id:'photo-result-2',storage_bucket:'ij-inspection-photos',storage_path:photoPath2,file_name:'รูปใหม่.jpg',public_url:null})
+ const openPhotos=async()=>{await go(pp,'inspection');await pp.getByRole('button',{name:'ดูผลตรวจ'}).click();await pp.locator('.inspection-result-list article').first().waitFor()}
+ const closePhotos=()=>pp.locator('[role=dialog]').getByRole('button',{name:/Close dialog/}).click()
+ const loadedPhotos=async(locator,count)=>{await locator.first().waitFor();for(let tries=0;tries<100&&await locator.count()!==count;tries++)await locator.page().waitForTimeout(50);assert.equal(await locator.count(),count);for(const img of await locator.all()){await img.scrollIntoViewIfNeeded();await img.evaluate(e=>e.decode());assert.equal(await img.evaluate(e=>e.naturalWidth),64)}}
+ await check('private inspection photos decode for both legacy public URLs and path-only metadata',async()=>{
+  await pp.reload();await pp.locator('.start-task-panel').waitFor();await openPhotos();await loadedPhotos(pp.locator('.inspection-result-list img'),2)
+  assert.ok((await pp.locator('.inspection-result-list img').evaluateAll(imgs=>imgs.map(i=>i.src))).every(src=>src.includes('/object/sign/')));assert.equal(photoFixture.storageRequests.filter(r=>r.method==='GET'&&r.path.includes('/object/public/')).length,0)
+  await pp.screenshot({path:path.join(root,'docs/screenshots/desktop/inspection-private-photos.png'),fullPage:true})
+ })
+ await check('inspection photo evidence also decodes in defects and follow-up',async()=>{
+  await closePhotos();await go(pp,'defects');await loadedPhotos(pp.locator('.defect-photo-gallery img'),2);await go(pp,'followup');await pp.locator('.followup-details>summary').click();await loadedPhotos(pp.locator('.follow-photo-strip img'),2);assert.ok((await pp.locator('.follow-photo-strip a').evaluateAll(a=>a.map(e=>e.href))).every(src=>src.includes('/object/sign/')))
+ })
+ await check('one signing error leaves the other photo visible and allows an individual retry',async()=>{
+  photoFixture.photoErrors.add(photoPath2);await openPhotos();await loadedPhotos(pp.locator('.inspection-result-list img'),1);await pp.getByRole('button',{name:'ลองโหลดรูปใหม่ รูปใหม่.jpg'}).waitFor();photoFixture.photoErrors.delete(photoPath2);await pp.getByRole('button',{name:'ลองโหลดรูปใหม่ รูปใหม่.jpg'}).click();await loadedPhotos(pp.locator('.inspection-result-list img'),2);assert.equal(await pp.locator('.photo-load-fallback').count(),0)
+ })
+ await check('an expired image request renews its URL automatically and decodes again',async()=>{
+  const first=pp.locator('.inspection-result-list article').first(),before=await first.locator('img').getAttribute('src');photoFixture.expirePhoto(before);await first.locator('img').evaluate(img=>{img.src+='&reload=expired-test'})
+  await pp.waitForFunction(old=>{const img=document.querySelector('.inspection-result-list article img');return img&&img.src!==old&&!img.src.includes('expired-test')&&img.complete&&img.naturalWidth===64},before);assert.equal(await first.locator('.photo-load-fallback').count(),0)
+ })
+ await check('unavailable photo stops automatic retries, fits phones, and recovers after manual retry',async()=>{
+  await closePhotos();photoFixture.brokenPhotoPaths.add(photoPath1);await openPhotos();const row=pp.locator('.inspection-result-list article').first();await row.getByRole('button',{name:'ลองโหลดรูปใหม่ รูปเก่า.jpg'}).waitFor();assert.equal(await row.locator('img').count(),0);await loadedPhotos(pp.locator('.inspection-result-list article').nth(1).locator('img'),1)
+  const before=photoFixture.storageRequests.length;await pp.waitForTimeout(180);assert.equal(photoFixture.storageRequests.length,before)
+  for(const width of [320,390,430]){await pp.setViewportSize({width,height:844});await row.scrollIntoViewIfNeeded();assert.ok(await pp.locator('[role=dialog]').evaluate(e=>e.scrollWidth<=e.clientWidth+1));assert.ok(await row.evaluate(e=>e.scrollWidth<=e.clientWidth+1));const b=await row.locator('button').boundingBox();assert.ok(b.width>=44&&b.height>=44)}
+  await pp.screenshot({path:path.join(root,'docs/screenshots/mobile/photo-load-retry.png'),fullPage:true});photoFixture.brokenPhotoPaths.delete(photoPath1);await row.getByRole('button',{name:'ลองโหลดรูปใหม่ รูปเก่า.jpg'}).click();await loadedPhotos(pp.locator('.inspection-result-list img'),2);await pp.setViewportSize({width:1280,height:900})
+ })
+ await check('attachment metadata failure can be retried without losing inspection results',async()=>{
+  await closePhotos();photoFixture.fail('ij_condition_result_attachments','GET');await openPhotos();await pp.locator('.form-error').filter({hasText:'โหลดรูปประกอบไม่สำเร็จ'}).waitFor();assert.equal(await pp.locator('.inspection-result-list article').count(),2);await pp.getByRole('button',{name:'ลองโหลดข้อมูลใหม่'}).click();await loadedPhotos(pp.locator('.inspection-result-list img'),2);assert.equal(await pp.locator('.form-error').count(),0);assert.deepEqual(photoFixture.errors,[])
+ })
+ fs.writeFileSync(path.join(root,'docs/browser-test-results.json'),JSON.stringify({scope:'Local browser with mocked private Supabase Storage; real PNG decode checks; no production writes',results},null,2))
  console.log(JSON.stringify({passed:results.length,failed:0}))
 }finally{await browser?.close();server.kill()}

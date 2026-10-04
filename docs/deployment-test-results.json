@@ -1,12 +1,12 @@
 {
-  "version": "13.11.1",
+  "version": "13.11.2",
   "node": "20.20.2",
   "npm": "10.8.2",
   "installation": "npm ci --no-audit --no-fund",
   "commands": [
     {
       "command": "npm test",
-      "passed": 18
+      "passed": 24
     },
     {
       "command": "npm run test:database",
@@ -27,8 +27,11 @@
     "released_pm_file": "20261002134634_ij_pm_standards_and_orders.sql",
     "legacy_and_current_sql_sha256": "a3f22c9516fbb20d5496e252c13af9cc4b09c89b5ab775bf5b672f3c3d9d3dc4",
     "after_fix_with_both_files": true,
-    "after_fix_with_current_file_only": true
+    "after_fix_with_current_file_only": true,
+    "scope": "Legacy PM filename regression verified in v13.11.1; same fixed PM test and unchanged SQL retained"
   },
   "production_records_changed": 0,
-  "github_hosted_deployment_verified": false
+  "github_hosted_deployment_verified": false,
+  "photo_frontend_verified": true,
+  "browser_passed": 47
 }

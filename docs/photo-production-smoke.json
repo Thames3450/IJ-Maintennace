@@ -1,0 +1,25 @@
+{
+  "version": "13.11.2",
+  "scope": "Local updated frontend with real Supabase reads; all non-read mutations blocked",
+  "machine": "230T-5",
+  "loaded_photos": 2,
+  "dimensions": [
+    {
+      "width": 3024,
+      "height": 4032,
+      "signed_url": true
+    },
+    {
+      "width": 3024,
+      "height": 4032,
+      "signed_url": true
+    }
+  ],
+  "blocked_mutations": 0,
+  "production_writes": 0,
+  "react_errors": 0,
+  "frontend_published": false,
+  "transport": "Node forwards read-only browser requests to real Supabase; records and image bytes are real",
+  "original_public_url_status": 400,
+  "signed_photo_http_status": 200
+}

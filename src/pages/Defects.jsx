@@ -2,6 +2,7 @@ import React,{useMemo,useState} from 'react'
 import { AlertTriangle, Plus, Wrench, Camera, CalendarClock, Trash2 } from '../icons.jsx'
 import { Badge, Button, Empty, PageIntro, SelectMenu } from '../components/UI.jsx'
 import { fmtDateTime, rolePlanner, statusLabel } from '../lib/utils.js'
+import PhotoAttachment from '../components/PhotoAttachment.jsx'
 
 export default function Defects({profile,findings,machines,onNew,onCreateTPM,onFollowUp,onDelete}){
   const [status,setStatus]=useState('open'),[machine,setMachine]=useState(''),[priority,setPriority]=useState('')
@@ -26,7 +27,7 @@ export default function Defects({profile,findings,machines,onNew,onCreateTPM,onF
         <header><div className="machine-code">{f.machines?.machine_no||'-'}</div><div className="defect-badges"><Badge tone={f.priority==='A'?'red':f.priority==='B'?'amber':'neutral'}>P-{f.priority}</Badge><Badge tone={f.status==='closed'?'green':f.status==='waiting_spare'?'amber':f.status==='verification'?'purple':'blue'}>{statusLabel(f.status)}</Badge></div></header>
         <h3><AlertTriangle size={17}/>{f.finding}</h3>
         {f.risk&&<p className="defect-risk"><b>Risk / Impact · ผลกระทบ</b>{f.risk}</p>}
-        {photos.length>0?<div className="defect-photo-gallery">{photos.slice(0,4).map((p,i)=><a key={p.id} href={p.signed_url||'#'} target="_blank" rel="noreferrer"><img src={p.signed_url} alt={p.file_name||`Defect photo ${i+1}`}/></a>)}</div>:<div className="defect-no-photo"><Camera size={15}/>No photo evidence · ไม่มีรูปประกอบ</div>}
+        {photos.length>0?<div className="defect-photo-gallery">{photos.slice(0,4).map(p=><PhotoAttachment key={p.id} photo={p} defaultBucket="ij-defect-photos"/>)}</div>:<div className="defect-no-photo"><Camera size={15}/>No photo evidence · ไม่มีรูปประกอบ</div>}
         <div className="defect-source"><span>Source · ที่มา: {sourceText(f.source_type)}</span><span>{fmtDateTime(f.created_at)}</span></div>
         <div className="defect-register-status"><CalendarClock size={14}/><div><b>{followStatusText(f)}</b><small>{followStatusThai(f)}</small></div></div>
         <footer>{rolePlanner(profile.role)&&<><Button size="sm" icon={Wrench} onClick={()=>onFollowUp(f)}>Follow-up <small>วางแผนแก้ไข</small></Button><Button size="sm" variant="ghost" onClick={()=>onCreateTPM(f)}>Create TPM <small>นำเข้าแผน</small></Button>{onDelete&&<Button size="sm" variant="ghost" className="delete-record-button" icon={Trash2} onClick={()=>onDelete(f)}>ลบรายการ</Button>}</>}</footer>

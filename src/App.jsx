@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase.js'
 import {readPaged} from './lib/readPaged.js'
+import {resolvePhotoUrls} from './lib/photoUrls.js'
 import {inspectionSummary} from './lib/inspectionChecklist.js'
 import {workflowRPC} from './lib/workflowService.js'
 import {visibleRecords} from './lib/recordDeletion.js'
@@ -118,22 +119,14 @@ export default function App(){
       if(listReady&&!map.findings.error){
         let findingRows=map.findings.data||[]
         const resultToFinding=new Map((map.inspectionResults?.data||[]).map(r=>[r.id,r.finding_id]))
-        const fromInspection=(map.inspectionAttachments?.data||[]).map(a=>({...a,finding_id:resultToFinding.get(a.result_id)})).filter(a=>a.finding_id)
+        const fromInspection=(map.inspectionAttachments?.data||[]).map(a=>({...a,storage_bucket:a.storage_bucket||'ij-inspection-photos',finding_id:resultToFinding.get(a.result_id)})).filter(a=>a.finding_id)
         const attachmentRows=[...(!map.findingAttachments?.error?(map.findingAttachments?.data||[]):[]),...fromInspection]
         if(attachmentRows.length){
-          const signedMap=new Map()
-          try{
-            for(const bucket of ['ij-defect-photos','ij-inspection-photos']){
-              const paths=[...new Set(attachmentRows.filter(a=>(a.storage_bucket||'ij-defect-photos')===bucket).map(a=>a.storage_path).filter(Boolean))]
-              for(let i=0;i<paths.length;i+=100){
-                const {data:signed,error:signedErr}=await supabase.storage.from(bucket).createSignedUrls(paths.slice(i,i+100),3600)
-                if(signedErr)throw signedErr
-                ;(signed||[]).forEach(x=>{if(x.path)signedMap.set(`${bucket}/${x.path}`,x.signedUrl||x.signed_url||null)})
-              }
-            }
-          }catch(e){failures.push('photo previews');console.error('[IJ] photo URL failed',e)}
+          const resolved=await resolvePhotoUrls(supabase,attachmentRows,{defaultBucket:'ij-defect-photos'})
+          if(sequence!==loadSequence.current)return false
+          if(resolved.some(p=>p.photo_error))failures.push('photo previews')
           const byFinding=new Map()
-          attachmentRows.forEach(a=>{if(!byFinding.has(a.finding_id))byFinding.set(a.finding_id,[]);byFinding.get(a.finding_id).push({...a,signed_url:signedMap.get(`${a.storage_bucket||'ij-defect-photos'}/${a.storage_path}`)||a.public_url||null})})
+          resolved.forEach(a=>{if(!byFinding.has(a.finding_id))byFinding.set(a.finding_id,[]);byFinding.get(a.finding_id).push(a)})
           findingRows=findingRows.map(f=>({...f,attachments:byFinding.get(f.id)||[]}))
         }else findingRows=findingRows.map(f=>({...f,attachments:[]}))
         setFindings(findingRows)
@@ -287,8 +280,7 @@ export default function App(){
             const {error:uploadError}=await supabase.storage.from('ij-inspection-photos').upload(path,p.file,{cacheControl:'3600',upsert:false,contentType:p.file.type||'image/jpeg'})
             if(uploadError)throw uploadError
             uploadedPaths.push(path)
-            const {data:urlData}=supabase.storage.from('ij-inspection-photos').getPublicUrl(path)
-            const {error:metaError}=await supabase.from('ij_condition_result_attachments').insert({result_id:result.id,inspection_id:inspection.id,machine_id,file_name:p.name||`photo_${i+1}.${ext}`,storage_bucket:'ij-inspection-photos',storage_path:path,public_url:urlData?.publicUrl||null,mime_type:p.type||p.file.type||'image/jpeg',file_size:p.size||p.file.size||null,uploaded_by:profile.id})
+            const {error:metaError}=await supabase.from('ij_condition_result_attachments').insert({result_id:result.id,inspection_id:inspection.id,machine_id,file_name:p.name||`photo_${i+1}.${ext}`,storage_bucket:'ij-inspection-photos',storage_path:path,public_url:null,mime_type:p.type||p.file.type||'image/jpeg',file_size:p.size||p.file.size||null,uploaded_by:profile.id})
             if(metaError)throw metaError
           }catch(err){
             console.error('Inspection photo upload failed',err)

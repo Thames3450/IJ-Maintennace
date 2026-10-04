@@ -1,5 +1,5 @@
 {
-  "scope": "Local browser with mocked Supabase; no production writes",
+  "scope": "Local browser with mocked private Supabase Storage; real PNG decode checks; no production writes",
   "results": [
     {
       "name": "all 14 pages render without React errors",
@@ -163,6 +163,30 @@
     },
     {
       "name": "removing an unsaved plan row asks for confirmation before discarding it",
+      "passed": true
+    },
+    {
+      "name": "private inspection photos decode for both legacy public URLs and path-only metadata",
+      "passed": true
+    },
+    {
+      "name": "inspection photo evidence also decodes in defects and follow-up",
+      "passed": true
+    },
+    {
+      "name": "one signing error leaves the other photo visible and allows an individual retry",
+      "passed": true
+    },
+    {
+      "name": "an expired image request renews its URL automatically and decodes again",
+      "passed": true
+    },
+    {
+      "name": "unavailable photo stops automatic retries, fits phones, and recovers after manual retry",
+      "passed": true
+    },
+    {
+      "name": "attachment metadata failure can be retried without losing inspection results",
       "passed": true
     }
   ]
