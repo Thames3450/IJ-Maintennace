@@ -1,6 +1,6 @@
+import PhotoRemoveButton from './PhotoRemoveButton.jsx'
 import PhotoActions from './PhotoActions.jsx'
 import React,{useEffect,useState} from 'react'
-import { Camera, Trash2 } from '../icons.jsx'
 import { Modal, Button, PriorityGuide, SelectMenu, FormError } from './UI.jsx'
 
 const PHOTO_LIMIT=4
@@ -55,7 +55,7 @@ export default function FindingModal({open,onClose,machines,job,profile,onSave})
       <label className="span-2">Risk / Impact <small>ผลกระทบหรือความเสี่ยงที่อาจเกิดขึ้น</small><textarea rows="2" value={form.risk} onChange={e=>setForm({...form,risk:e.target.value})} placeholder="Safety / machine stop / quality / downtime impact · ผลกระทบต่อความปลอดภัย เครื่องหยุด คุณภาพ หรือ Downtime"/></label>
       <div className="span-2 defect-photo-upload">
         <div className="defect-photo-upload-head"><div><b>Photo Evidence</b><small>รูปภาพหลักฐาน · ถ่ายจากมือถือหรือแนบไฟล์ได้</small></div><PhotoActions disabled={(form.photos||[]).length>=PHOTO_LIMIT} onFiles={addPhotos}/></div>
-        {(form.photos||[]).length?<div className="inspection-photo-grid defect-upload-grid">{form.photos.map(p=><figure key={p.id} className="inspection-photo-thumb"><img src={p.preview} alt={p.name}/><button type="button" className="photo-remove-btn" onClick={()=>removePhoto(p.id)}><Trash2 size={14}/></button><figcaption>{Math.round((p.size||0)/1024)} KB</figcaption></figure>)}</div>:<div className="inspection-photo-empty">No photo attached · ยังไม่มีรูป <span>(สูงสุด {PHOTO_LIMIT} รูป)</span></div>}
+        {(form.photos||[]).length?<div className="inspection-photo-grid defect-upload-grid">{form.photos.map(p=><figure key={p.id} className="inspection-photo-thumb"><img src={p.preview} alt={p.name}/><PhotoRemoveButton name={p.name} disabled={saving} onRemove={()=>removePhoto(p.id)}/><figcaption>{Math.round((p.size||0)/1024)} KB</figcaption></figure>)}</div>:<div className="inspection-photo-empty">No photo attached · ยังไม่มีรูป <span>(สูงสุด {PHOTO_LIMIT} รูป)</span></div>}
       </div>
     </div>
   </Modal>

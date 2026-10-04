@@ -110,6 +110,10 @@
       "passed": true
     },
     {
+      "name": "photo remove cross fits mobile, cancellation preserves photos and confirmation removes only the selected draft",
+      "passed": true
+    },
+    {
       "name": "follow-up shows next action, overdue filter, searchable owner and expandable evidence",
       "passed": true
     },

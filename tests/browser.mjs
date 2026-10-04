@@ -231,6 +231,32 @@ try{
   await go(page,'defects');await page.getByRole('button',{name:/New Defect|เพิ่ม.*ผิดปกติ|แจ้ง.*ผิดปกติ/}).first().click();assert.equal(await page.getByLabel('ถ่ายรูป',{exact:true}).getAttribute('capture'),'environment');assert.equal(await page.getByLabel('เลือกจากเครื่อง',{exact:true}).getAttribute('capture'),null);await page.getByLabel('เลือกจากเครื่อง',{exact:true}).setInputFiles({name:'gallery.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64')});await page.locator('.defect-upload-grid figure>img').waitFor();assert.equal(await page.locator('.defect-upload-grid figure>img').count(),1);await page.getByRole('button',{name:'ปิดหน้าต่าง / Close dialog'}).click()
   await go(page,'inspection');await page.getByRole('button',{name:/Start Inspection/}).click();await choose(page,page.locator('.inspection-form-head .select-menu-trigger').first(),'650T-8');const row=page.locator('.inspection-check-row').first();await choose(page,row.locator('.select-menu-trigger'),'Abnormal');assert.equal(await row.getByLabel('ถ่ายรูป',{exact:true}).getAttribute('capture'),'environment');assert.equal(await row.getByLabel('เลือกจากเครื่อง',{exact:true}).getAttribute('capture'),null);await page.getByRole('button',{name:'ปิดหน้าต่าง / Close dialog'}).click()
  })
+ await check('photo remove cross fits mobile, cancellation preserves photos and confirmation removes only the selected draft',async()=>{
+  const f=await fixture(390),p=f.page
+  const files=[{name:'first.png',mimeType:'image/png',buffer:photoBytes},{name:'second.png',mimeType:'image/png',buffer:photoBytes}]
+  const verify=async(container)=>{
+    await container.locator('figure > img').first().evaluate(img=>img.decode())
+    const remove=container.getByRole('button',{name:'นำรูปออก: first.png',exact:true})
+    for(const width of [320,390,430]){
+      await p.setViewportSize({width,height:844});await remove.scrollIntoViewIfNeeded()
+      const box=await remove.boundingBox();assert.ok(box.width>=44&&box.height>=44)
+      const style=await remove.locator('svg').evaluate(e=>({color:getComputedStyle(e).color,bg:getComputedStyle(e).backgroundColor,stroke:e.getAttribute('stroke'),path:e.querySelector('path').getAttribute('d')}))
+      assert.equal(style.color,'rgb(255, 255, 255)');assert.equal(style.bg,'rgba(0, 0, 0, 0)');assert.equal(style.stroke,'currentColor');assert.ok(style.path)
+      assert.equal(await remove.locator('img').count(),0);assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth))
+    }
+    await p.setViewportSize({width:390,height:844})
+    await container.screenshot({path:path.join(root,'docs/screenshots/mobile/photo-remove-'+(await container.getAttribute('class')).includes('defect')+'.png')})
+    p.once('dialog',d=>d.dismiss());await remove.click();assert.equal(await container.locator('figure > img').count(),2)
+    p.once('dialog',d=>d.accept());await remove.click();await remove.waitFor({state:'hidden'});assert.equal(await container.locator('figure > img').count(),1)
+    assert.equal(await container.locator('figure > img').getAttribute('alt'),'second.png')
+  }
+  await go(p,'defects');await p.getByRole('button',{name:/New Defect/}).first().click();await p.getByLabel('เลือกจากเครื่อง',{exact:true}).setInputFiles(files)
+  await verify(p.locator('.defect-upload-grid'));await p.getByRole('button',{name:'ปิดหน้าต่าง / Close dialog'}).click()
+  await go(p,'inspection');await p.getByRole('button',{name:/Start Inspection/}).click();await choose(p,p.locator('.inspection-form-head .select-menu-trigger').first(),'650T-8')
+  const row=p.locator('.inspection-check-row').first();await choose(p,row.locator('.select-menu-trigger'),'Abnormal');await row.getByLabel('เลือกจากเครื่อง',{exact:true}).setInputFiles(files)
+  await verify(row.locator('.inspection-photo-grid'));assert.equal(f.writes.length,0);assert.deepEqual(f.errors,[])
+  await p.getByRole('button',{name:'ปิดหน้าต่าง / Close dialog'}).click()
+ })
  await check('follow-up shows next action, overdue filter, searchable owner and expandable evidence',async()=>{
   tables.ij_tpm_findings.push({id:'long-follow',department_id:'dept',machine_id:'m1',machines:tables.machines[0],priority:'A',finding:'ทดสอบปัญหายาว '+('ตรวจสายลมและข้อต่อ '.repeat(12)),status:'waiting_spare',owner_profile_id:'tech1',target_date:'2026-01-01',permanent_action:'เปลี่ยนสายลมและตรวจยืนยัน',temporary_action:'ควบคุมจุดรั่ว',verification_note:'',spare_required:true,need_machine_stop:true,created_at:new Date().toISOString()})
   await go(page,'followup');await page.reload();await page.locator('.followup-compact').filter({hasText:'ทดสอบปัญหายาว'}).waitFor();const card=page.locator('.followup-compact').filter({hasText:'ทดสอบปัญหายาว'});assert.match(await card.locator('.followup-next').innerText(),/ติดตามอะไหล่/);assert.equal(await card.locator('.followup-details').getAttribute('open'),null);await card.locator('.followup-details>summary').click();await card.getByText('ควบคุมจุดรั่ว',{exact:true}).waitFor();await page.getByRole('button',{name:/เกินกำหนด.*กดดูรายการ/}).click();assert.equal(await page.locator('.followup-compact:not(.is-overdue)').count(),0);await page.getByLabel('ค้นหางานติดตาม').fill('ช่างทดสอบ');assert.equal(await card.count(),1);await page.getByLabel('ค้นหางานติดตาม').fill('ไม่พบข้อความนี้');assert.equal(await page.locator('.followup-compact').count(),0);await page.getByRole('button',{name:'ล้างตัวกรอง'}).click();await card.waitFor();await card.getByRole('button',{name:'อัปเดตงาน'}).click();await page.locator('[role=dialog] .followup-extra').first().locator('summary').click();await page.locator('[role=dialog] label').filter({hasText:'สิ่งที่ทำจริง / ผลหลังทำ'}).locator('textarea').fill('ยังรออะไหล่ (ทดสอบ)');fail('ij_followup_save','POST');await page.locator('[role=dialog]').getByRole('button',{name:'บันทึกความคืบหน้า',exact:true}).click();await page.locator('.form-error').filter({hasText:'Simulated'}).waitFor();assert.equal(await page.locator('[role=dialog] label').filter({hasText:'สิ่งที่ทำจริง / ผลหลังทำ'}).locator('textarea').inputValue(),'ยังรออะไหล่ (ทดสอบ)');await page.getByRole('button',{name:'ยกเลิก',exact:true}).click();await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(root,'docs/screenshots/desktop/followup-redesign.png'),fullPage:true})

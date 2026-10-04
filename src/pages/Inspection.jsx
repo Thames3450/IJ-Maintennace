@@ -1,3 +1,4 @@
+import PhotoRemoveButton from '../components/PhotoRemoveButton.jsx'
 import {inspectionThai} from '../lib/inspectionThai.js'
 import PhotoActions from '../components/PhotoActions.jsx'
 import React,{useEffect,useMemo,useState} from 'react'
@@ -132,7 +133,7 @@ export default function Inspection({machines,inspections,templates,templateItems
                   <span><Camera size={16}/> Photo evidence <small>แนบรูปหลักฐาน (สูงสุด {PHOTO_LIMIT} รูป)</small></span>
                   <PhotoActions disabled={(r.photos||[]).length>=PHOTO_LIMIT} onFiles={files=>appendPhotos(idx,files)}/>
                 </div>
-                {(r.photos||[]).length>0?<div className="inspection-photo-grid">{r.photos.map(photo=><figure key={photo.id} className="inspection-photo-thumb"><img src={photo.preview} alt={photo.name}/><button type="button" className="photo-remove-btn" onClick={()=>removePhoto(idx,photo.id)}><Trash2 size={14}/></button><figcaption>{Math.round((photo.size||0)/1024)} KB</figcaption></figure>)}</div>:<div className="inspection-photo-empty">No photo yet · ยังไม่มีรูป</div>}
+                {(r.photos||[]).length>0?<div className="inspection-photo-grid">{r.photos.map(photo=><figure key={photo.id} className="inspection-photo-thumb"><img src={photo.preview} alt={photo.name}/><PhotoRemoveButton name={photo.name} disabled={saving} onRemove={()=>removePhoto(idx,photo.id)}/><figcaption>{Math.round((photo.size||0)/1024)} KB</figcaption></figure>)}</div>:<div className="inspection-photo-empty">No photo yet · ยังไม่มีรูป</div>}
               </div>}
             </div>
           </div>
