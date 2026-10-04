@@ -1,9 +1,9 @@
 import React,{useMemo,useState} from 'react'
-import { AlertTriangle, Plus, Wrench, Camera, CalendarClock } from '../icons.jsx'
+import { AlertTriangle, Plus, Wrench, Camera, CalendarClock, Trash2 } from '../icons.jsx'
 import { Badge, Button, Empty, PageIntro, SelectMenu } from '../components/UI.jsx'
 import { fmtDateTime, rolePlanner, statusLabel } from '../lib/utils.js'
 
-export default function Defects({profile,findings,machines,onNew,onCreateTPM,onFollowUp}){
+export default function Defects({profile,findings,machines,onNew,onCreateTPM,onFollowUp,onDelete}){
   const [status,setStatus]=useState('open'),[machine,setMachine]=useState(''),[priority,setPriority]=useState('')
   const rows=useMemo(()=>findings
     .filter(f=>status==='all'||(status==='open'?f.status!=='closed':f.status===status))
@@ -29,7 +29,7 @@ export default function Defects({profile,findings,machines,onNew,onCreateTPM,onF
         {photos.length>0?<div className="defect-photo-gallery">{photos.slice(0,4).map((p,i)=><a key={p.id} href={p.signed_url||'#'} target="_blank" rel="noreferrer"><img src={p.signed_url} alt={p.file_name||`Defect photo ${i+1}`}/></a>)}</div>:<div className="defect-no-photo"><Camera size={15}/>No photo evidence · ไม่มีรูปประกอบ</div>}
         <div className="defect-source"><span>Source · ที่มา: {sourceText(f.source_type)}</span><span>{fmtDateTime(f.created_at)}</span></div>
         <div className="defect-register-status"><CalendarClock size={14}/><div><b>{followStatusText(f)}</b><small>{followStatusThai(f)}</small></div></div>
-        <footer>{rolePlanner(profile.role)&&<><Button size="sm" icon={Wrench} onClick={()=>onFollowUp(f)}>Follow-up <small>วางแผนแก้ไข</small></Button><Button size="sm" variant="ghost" onClick={()=>onCreateTPM(f)}>Create TPM <small>นำเข้าแผน</small></Button></>}</footer>
+        <footer>{rolePlanner(profile.role)&&<><Button size="sm" icon={Wrench} onClick={()=>onFollowUp(f)}>Follow-up <small>วางแผนแก้ไข</small></Button><Button size="sm" variant="ghost" onClick={()=>onCreateTPM(f)}>Create TPM <small>นำเข้าแผน</small></Button>{onDelete&&<Button size="sm" variant="ghost" className="delete-record-button" icon={Trash2} onClick={()=>onDelete(f)}>ลบรายการ</Button>}</>}</footer>
       </article>
     }):<Empty title="No matching defects" text="ไม่มี Defect ตามเงื่อนไข"/>}</div>
   </>

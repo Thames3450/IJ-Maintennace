@@ -15,3 +15,7 @@ Applied to MPR Maintenance project `hftlogubohbjiivcvkut`:
 - seeded `Injection Basic Condition Check`
 
 These changes are additive and use the existing MPR machine/department/profile masters.
+
+## v13.11 (4 October 2026)
+
+Applied `20261004104312_ij_tpm_followup_and_confirmed_deletion.sql` to the existing project. It adds SECURITY INVOKER transactional TPM start/finish and direct follow-up closeout, verification/attempt fields, and an IJ-scoped RLS deletion marker table. Existing records are not backfilled, closed, or deleted by installing it. Markers hide records in this IJ frontend while retaining source records and photo objects; they do not alter external MPR lists. The frontend must be updated too. Other compatible projects should apply this once after the PM migration.

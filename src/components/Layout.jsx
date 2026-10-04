@@ -72,7 +72,7 @@ export default function Layout({ page, setPage, profile, onLogout, onRefresh, on
         </section>)}
       </nav>
       <div className="side-bottom">
-        <div className="system-version-card"><span>System</span><b>IJ-MNT v13.9</b><small>Direct Access · No Login</small></div>
+        <div className="system-version-card"><span>System</span><b>IJ-MNT v13.11</b><small>Direct Access · No Login</small></div>
         <div className="user-card"><div className="avatar">{profile?.full_name?.slice(0,1)||'U'}</div><div><b>{profile?.full_name}</b><span>{profile?.employee_code} · {profile?.role}</span></div></div>
       </div>
     </aside>
@@ -94,7 +94,7 @@ export default function Layout({ page, setPage, profile, onLogout, onRefresh, on
         <div><span className="status-dot"/><b>{dataErrors.length?'ข้อมูลโหลดไม่ครบ':'Database connected'}</b><small>MPR Maintenance · ฐานข้อมูลเดียวกัน</small></div>
         <div><CheckCircle2 size={15}/><b>Direct access</b><small>เปิดใช้งานทันที · ไม่ต้อง Login</small></div>
         <div><RefreshCcw size={14}/><b>Last sync {lastSync}</b><small>อัปเดตข้อมูลล่าสุด</small></div>
-        <div className="statusbar-version"><b>v13.9</b><small>No Login Mode</small></div>
+        <div className="statusbar-version"><b>v13.11</b><small>No Login Mode</small></div>
       </div>
 
       <div className="page-wrap enterprise-page-wrap">{children}</div>

@@ -1,0 +1,78 @@
+{
+  "scope": "Local PostgreSQL (PGlite), real v13.11 migration/RLS/RPC; no production records",
+  "passed": 18,
+  "checks": [
+    {
+      "name": "starting TPM carries its lead, work plan and start time to the source finding",
+      "passed": true
+    },
+    {
+      "name": "one TPM completion saves actual zero and closes only its source finding",
+      "passed": true
+    },
+    {
+      "name": "completion retry is idempotent; a new attempt cannot overwrite a closed TPM",
+      "passed": true
+    },
+    {
+      "name": "missing verification blocks both TPM and follow-up closure",
+      "passed": true
+    },
+    {
+      "name": "partial work remains open and does not duplicate the original finding",
+      "passed": true
+    },
+    {
+      "name": "completed TPM with further work keeps the source open without a duplicate",
+      "passed": true
+    },
+    {
+      "name": "choosing later verification transfers the work and leaves source awaiting verification",
+      "passed": true
+    },
+    {
+      "name": "one of multiple linked jobs cannot prematurely close their source",
+      "passed": true
+    },
+    {
+      "name": "source write failure rolls back execution and job changes together",
+      "passed": true
+    },
+    {
+      "name": "manual closeout needs owner, work and verification; plan derives from actual work",
+      "passed": true
+    },
+    {
+      "name": "manual closeout cannot bypass a still active linked TPM",
+      "passed": true
+    },
+    {
+      "name": "RLS denial of source updates never leaves a completed TPM behind",
+      "passed": true
+    },
+    {
+      "name": "deletion requires confirmation and preserves all original evidence",
+      "passed": true
+    },
+    {
+      "name": "deletion rejects unknown types, unknown IDs and foreign departments atomically",
+      "passed": true
+    },
+    {
+      "name": "deleted TPMs cannot be started or completed",
+      "passed": true
+    },
+    {
+      "name": "all remaining record types can be hidden without deleting their original rows",
+      "passed": true
+    },
+    {
+      "name": "PM deletions preserve approved revisions and work-order snapshots",
+      "passed": true
+    },
+    {
+      "name": "RLS blocks a direct deletion marker outside IJ",
+      "passed": true
+    }
+  ]
+}

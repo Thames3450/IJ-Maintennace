@@ -38,7 +38,7 @@
       "passed": true
     },
     {
-      "name": "closed follow-up requires owner, actual work and verification",
+      "name": "manual follow-up closes directly with owner, actual work and verification",
       "passed": true
     },
     {
@@ -119,6 +119,50 @@
     },
     {
       "name": "all 12 English inspection points and methods have Thai on entry and saved history",
+      "passed": true
+    },
+    {
+      "name": "mobile calendar opens an agenda, selects dates, and keeps compact month days usable",
+      "passed": true
+    },
+    {
+      "name": "nested plan and completion footer text stays inside tappable buttons at 320, 390 and 430 pixels",
+      "passed": true
+    },
+    {
+      "name": "inspection finding enters TPM once, then both jobs close from one mobile form",
+      "passed": true
+    },
+    {
+      "name": "linked partial TPM stays open and its follow-up opens the existing TPM",
+      "passed": true
+    },
+    {
+      "name": "old completed TPM results prefill the direct close form without typing work twice",
+      "passed": true
+    },
+    {
+      "name": "deletion requires acknowledgement, cancel is harmless, failure preserves the item",
+      "passed": true
+    },
+    {
+      "name": "deleted findings stay hidden after refresh in follow-up, defects and machine history",
+      "passed": true
+    },
+    {
+      "name": "delete whole plan confirms every job even when a machine filter hides one",
+      "passed": true
+    },
+    {
+      "name": "inspection, improvement, spare, repair and PM records use the same confirmation",
+      "passed": true
+    },
+    {
+      "name": "simple closeout and delete confirmation fit phones at 320, 390 and 430 pixels",
+      "passed": true
+    },
+    {
+      "name": "removing an unsaved plan row asks for confirmation before discarding it",
       "passed": true
     }
   ]

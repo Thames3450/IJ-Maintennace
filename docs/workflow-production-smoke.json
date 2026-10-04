@@ -1,0 +1,5 @@
+{
+  "date": "2026-10-04",
+  "passed": 6,
+  "scope": "Real anon API: two read-only checks and four guarded invalid requests; no production records created, updated or deleted"
+}
