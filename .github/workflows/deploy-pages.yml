@@ -45,6 +45,9 @@ jobs:
       - name: Test PM database rules locally
         run: npm run test:database
 
+      - name: Test TPM and follow-up database rules locally
+        run: npm run test:workflow-database
+
       # Run Vite through Node directly so Linux executable bits cannot break the build.
       - name: Build
         run: node ./node_modules/vite/bin/vite.js build

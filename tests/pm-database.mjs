@@ -13,8 +13,10 @@ async function rejects(sql,params,pattern){await assert.rejects(query(sql,params
 try{
  await db.exec(`create role anon;create table public.departments(id uuid primary key,dept_code text);create table public.machines(id uuid primary key,department_id uuid references public.departments(id),machine_no text,machine_name text,is_active boolean);grant usage on schema public to anon;grant select on public.departments,public.machines to anon;`)
  await query('insert into departments values($1,$2),($3,$4)',[id(1),'IJ',id(2),'OTHER']);await query('insert into machines values($1,$2,$3,$4,true),($5,$6,$7,$8,true)',[id(3),id(1),'TEST-IJ','เครื่องทดสอบ',id(4),id(2),'OTHER','เครื่องอื่น'])
- const migrations=fs.readdirSync(path.join(root,'supabase/migrations')).filter(x=>x.endsWith('_ij_pm_standards_and_orders.sql'))
- assert.equal(migrations.length,1);await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',migrations[0]),'utf8'))
+ // GitHub uploads can retain the old filename. Test the released migration once.
+ const migration=path.join(root,'supabase/migrations/20261002134634_ij_pm_standards_and_orders.sql')
+ assert.ok(fs.existsSync(migration),'Missing released PM migration: 20261002134634_ij_pm_standards_and_orders.sql')
+ await db.exec(fs.readFileSync(migration,'utf8'))
  await db.exec('set role anon')
  const s={...structuredClone(PM_TEMPLATES[0]),id:id(5),department_id:id(1),machine_id:null,status:'draft',std_minutes:30,machine_scope:'TEST-IJ',reference:'คู่มือเครื่องทดสอบ',prepared_by_name:'ผู้จัดทำ',reviewer_name:'ผู้ทวนสอบ'}
  const save=std=>query('select public.ij_pm_save_standard($1::jsonb) as result',[JSON.stringify(std)])

@@ -1,5 +1,5 @@
 {
-  "version": "13.11",
+  "version": "13.11.1",
   "date": "2026-10-04",
   "unit": 18,
   "database": 18,
@@ -20,7 +20,7 @@
     1280,
     1693
   ],
-  "database_test_scope": "v13.11 workflow migration: 18 current local PostgreSQL tests; unchanged PM migration: 16 retained tests",
+  "database_test_scope": "Current Node 20.20.2: 16 PM and 18 workflow PostgreSQL tests; PM also passed with the retained legacy migration filename",
   "inspection_thai_points": 12,
   "inspection_thai_methods": 10,
   "mobile_footer_widths": [
@@ -37,5 +37,13 @@
   "deletion_preserves_source_records": true,
   "tpm_closes_linked_followup_atomically": true,
   "workflow_migration_version": "20261004104312",
-  "pm_migration_version": "20261002134634"
+  "pm_migration_version": "20261002134634",
+  "browser_verification_from_version": "13.11",
+  "frontend_changed": false,
+  "ci_node_version": "20.20.2",
+  "ci_npm_version": "10.8.2",
+  "ci_clean_install": true,
+  "ci_build_passed": true,
+  "legacy_pm_filename_regression_passed": true,
+  "clean_pm_folder_passed": true
 }
