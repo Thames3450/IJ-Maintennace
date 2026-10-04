@@ -1,0 +1,358 @@
+[
+  {
+    "text": "ฐานข้อมูลกลางงานซ่อมบำรุง",
+    "size": "8.5px"
+  },
+  {
+    "text": "เมนูหลัก",
+    "size": "9px"
+  },
+  {
+    "text": "งานปฏิบัติการ",
+    "size": "8px"
+  },
+  {
+    "text": "ภาพรวม",
+    "size": "9px"
+  },
+  {
+    "text": "เครื่องจักร",
+    "size": "9px"
+  },
+  {
+    "text": "แผนงาน",
+    "size": "9px"
+  },
+  {
+    "text": "ตรวจสภาพ",
+    "size": "9px"
+  },
+  {
+    "text": "ควบคุมและติดตาม",
+    "size": "8px"
+  },
+  {
+    "text": "จุดผิดปกติ",
+    "size": "9px"
+  },
+  {
+    "text": "งานติดตาม",
+    "size": "9px"
+  },
+  {
+    "text": "โอกาสปรับปรุง",
+    "size": "9px"
+  },
+  {
+    "text": "อะไหล่",
+    "size": "9px"
+  },
+  {
+    "text": "ประวัติและวิเคราะห์",
+    "size": "8px"
+  },
+  {
+    "text": "ประวัติเครื่อง",
+    "size": "9px"
+  },
+  {
+    "text": "ประวัติซ่อม",
+    "size": "9px"
+  },
+  {
+    "text": "ตัวชี้วัด",
+    "size": "9px"
+  },
+  {
+    "text": "มาตรฐาน PM",
+    "size": "9px"
+  },
+  {
+    "text": "รายงาน",
+    "size": "9px"
+  },
+  {
+    "text": "Direct Access · No Login",
+    "size": "8px"
+  },
+  {
+    "text": "เมนูหลักระบบซ่อมบำรุงแผนก IJ",
+    "size": "15px"
+  },
+  {
+    "text": "Select the module you want to work with. Every module uses the same MP",
+    "size": "14px"
+  },
+  {
+    "text": "IJ Maintenance",
+    "size": "12px"
+  },
+  {
+    "text": "No Login · เปิดระบบและใช้งานได้ทันที",
+    "size": "10px"
+  },
+  {
+    "text": "สร้างแผน TPM",
+    "size": "9px"
+  },
+  {
+    "text": "เปิดภาพรวม",
+    "size": "9px"
+  },
+  {
+    "text": "ตรวจสภาพเครื่อง",
+    "size": "15px"
+  },
+  {
+    "text": "ตรวจตามรายการและเลือกผลทีละข้อ",
+    "size": "13px"
+  },
+  {
+    "text": "พบปัญหา / แจ้งจุดผิดปกติ",
+    "size": "15px"
+  },
+  {
+    "text": "เลือกเครื่อง ระบุปัญหา และแนบรูป",
+    "size": "13px"
+  },
+  {
+    "text": "แก้ไขและติดตามปัญหา",
+    "size": "15px"
+  },
+  {
+    "text": "บันทึกสิ่งที่ทำจริง แล้วตรวจยืนยัน",
+    "size": "13px"
+  },
+  {
+    "text": "ทำงานตามแผน TPM / PM",
+    "size": "15px"
+  },
+  {
+    "text": "เริ่มงาน บันทึกผล และงานที่ยังเหลือ",
+    "size": "13px"
+  },
+  {
+    "text": "Open TPM / PM\nงานแผนที่ยังไม่ปิด",
+    "size": "10px"
+  },
+  {
+    "text": "3",
+    "size": "22px"
+  },
+  {
+    "text": "Open Defects\nจุดผิดปกติคงค้าง",
+    "size": "10px"
+  },
+  {
+    "text": "1",
+    "size": "22px"
+  },
+  {
+    "text": "Waiting Spare\nงานรออะไหล่",
+    "size": "10px"
+  },
+  {
+    "text": "0",
+    "size": "22px"
+  },
+  {
+    "text": "Repairs / 30 Days\nงานซ่อม 30 วัน",
+    "size": "10px"
+  },
+  {
+    "text": "0",
+    "size": "22px"
+  },
+  {
+    "text": "Operations",
+    "size": "19px"
+  },
+  {
+    "text": "งานปฏิบัติการ",
+    "size": "11px"
+  },
+  {
+    "text": "Daily maintenance work and machine condition control. · งานประจำวันที่",
+    "size": "11px"
+  },
+  {
+    "text": "Dashboard",
+    "size": "15px"
+  },
+  {
+    "text": "ภาพรวม",
+    "size": "13px"
+  },
+  {
+    "text": "View current maintenance status, open work and important alerts.\nดูภาพ",
+    "size": "13px"
+  },
+  {
+    "text": "Machines",
+    "size": "15px"
+  },
+  {
+    "text": "เครื่องจักร",
+    "size": "13px"
+  },
+  {
+    "text": "Open machine profiles, condition and recent maintenance activity.\nเปิด",
+    "size": "13px"
+  },
+  {
+    "text": "TPM / PM",
+    "size": "15px"
+  },
+  {
+    "text": "แผน TPM / PM",
+    "size": "13px"
+  },
+  {
+    "text": "Create and follow multi-machine preventive maintenance plans.\nสร้างและ",
+    "size": "13px"
+  },
+  {
+    "text": "Inspection",
+    "size": "15px"
+  },
+  {
+    "text": "ตรวจสภาพ",
+    "size": "13px"
+  },
+  {
+    "text": "Perform condition inspection and record abnormal findings.\nตรวจสภาพเคร",
+    "size": "13px"
+  },
+  {
+    "text": "Control & Follow-up",
+    "size": "19px"
+  },
+  {
+    "text": "ควบคุมและติดตาม",
+    "size": "11px"
+  },
+  {
+    "text": "Control abnormal conditions, pending actions and spare support. · จัดก",
+    "size": "11px"
+  },
+  {
+    "text": "Defects",
+    "size": "15px"
+  },
+  {
+    "text": "จุดผิดปกติ",
+    "size": "13px"
+  },
+  {
+    "text": "Review abnormal findings from TPM, inspection and repair work.\nดูจุดผิ",
+    "size": "13px"
+  },
+  {
+    "text": "Follow-up",
+    "size": "15px"
+  },
+  {
+    "text": "งานติดตาม",
+    "size": "13px"
+  },
+  {
+    "text": "Track waiting spare, waiting machine stop and open actions.\nติดตามงานร",
+    "size": "13px"
+  },
+  {
+    "text": "Opportunity",
+    "size": "15px"
+  },
+  {
+    "text": "โอกาสปรับปรุง",
+    "size": "13px"
+  },
+  {
+    "text": "Capture reliability and maintainability improvement opportunities.\nเก็",
+    "size": "13px"
+  },
+  {
+    "text": "Spare Parts",
+    "size": "15px"
+  },
+  {
+    "text": "อะไหล่",
+    "size": "13px"
+  },
+  {
+    "text": "Review requests and update spare request status.\nดูรายการขออะไหล่และอั",
+    "size": "13px"
+  },
+  {
+    "text": "Records & Analysis",
+    "size": "19px"
+  },
+  {
+    "text": "ประวัติและวิเคราะห์",
+    "size": "11px"
+  },
+  {
+    "text": "Trace machine history, analyze KPI and prepare management reports. · ใ",
+    "size": "11px"
+  },
+  {
+    "text": "Machine History",
+    "size": "15px"
+  },
+  {
+    "text": "ประวัติเครื่อง",
+    "size": "13px"
+  },
+  {
+    "text": "One timeline for Repair, TPM/PM, Inspection, Defect and Opportunity.\nร",
+    "size": "13px"
+  },
+  {
+    "text": "Repair History",
+    "size": "15px"
+  },
+  {
+    "text": "ประวัติซ่อม",
+    "size": "13px"
+  },
+  {
+    "text": "Review breakdown and corrective maintenance history.\nดูประวัติงานเสียแ",
+    "size": "13px"
+  },
+  {
+    "text": "KPI",
+    "size": "15px"
+  },
+  {
+    "text": "ตัวชี้วัด",
+    "size": "13px"
+  },
+  {
+    "text": "Analyze MTBF, MTTR, Availability, Downtime and TPM performance.\nวิเครา",
+    "size": "13px"
+  },
+  {
+    "text": "PM Standard",
+    "size": "15px"
+  },
+  {
+    "text": "มาตรฐาน PM",
+    "size": "13px"
+  },
+  {
+    "text": "Manage preventive maintenance standards and due work.\nจัดการมาตรฐาน PM",
+    "size": "13px"
+  },
+  {
+    "text": "Reports",
+    "size": "15px"
+  },
+  {
+    "text": "รายงาน",
+    "size": "13px"
+  },
+  {
+    "text": "Prepare executive maintenance report for management and production.\nจั",
+    "size": "13px"
+  }
+]

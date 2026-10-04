@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useState} from 'react'
 import { PackageOpen, CalendarClock, Wrench, Camera, UserRound } from '../icons.jsx'
 import { Button, Badge, Empty, PageIntro, SelectMenu } from '../components/UI.jsx'
 import FollowUpModal from '../components/FollowUpModal.jsx'
+import {decodeActionResult} from '../lib/actionResult.js'
 import { fmtDate, rolePlanner, statusLabel } from '../lib/utils.js'
 
 export default function FollowUp({profile,findings,technicians,onSaveAction,onCreateTPM,initialFinding,onConsumedInitial}){
@@ -33,6 +34,7 @@ export default function FollowUp({profile,findings,technicians,onSaveAction,onCr
     <section className="compact-filter-bar"><SelectMenu value={status} onChange={setStatus} options={[{value:'active',label:'Active follow-up',sub:'งานที่ยังไม่ปิด'},{value:'all',label:'All',sub:'ทั้งหมด'},{value:'open',label:'Action Pending',sub:'ยังไม่ได้วางแผน'},{value:'waiting_spare',label:'Waiting Spare',sub:'รออะไหล่'},{value:'waiting_machine_stop',label:'Waiting Stop',sub:'รอหยุดเครื่อง'},{value:'in_progress',label:'In Progress',sub:'กำลังดำเนินการ'},{value:'verification',label:'Verification',sub:'รอยืนยันผล'},{value:'closed',label:'Closed',sub:'ปิดแล้ว'}]}/><SelectMenu value={priority} onChange={setPriority} options={[{value:'',label:'All priority',sub:'ทุกระดับ'},{value:'A',label:'A — Critical',sub:'วิกฤต / เร่งด่วน'},{value:'B',label:'B — Important',sub:'สำคัญ / ควรแก้เร็ว'},{value:'C',label:'C — Routine',sub:'ทั่วไป / วางแผนทำ'}]}/></section>
 
     <div className="follow-grid action-tracker-grid">{rows.length?rows.map(f=>{
+      const evidence=decodeActionResult(f.verification_note||'')
       const owner=(technicians||[]).find(t=>t.id===f.owner_profile_id)
       const photos=f.attachments||[]
       const actionPending=f.status==='open'&&!f.temporary_action&&!f.permanent_action
@@ -46,8 +48,9 @@ export default function FollowUp({profile,findings,technicians,onSaveAction,onCr
           <span><PackageOpen size={15}/>Spare <b>{f.spare_required?'Required · ต้องใช้':'No · ไม่ใช้'}</b></span>
           <span><Wrench size={15}/>Stop <b>{f.need_machine_stop?'Required · ต้องหยุด':'No · ไม่ต้องหยุด'}</b></span>
         </div>
-        {(f.temporary_action||f.permanent_action)&&<div className="follow-action-summary">{f.temporary_action&&<div><span>Temporary / ชั่วคราว</span><p>{f.temporary_action}</p></div>}{f.permanent_action&&<div><span>Permanent / ถาวร</span><p>{f.permanent_action}</p></div>}</div>}
-        {f.verification_note&&<div className="verification-box"><b>Verification / ผลยืนยัน</b><p>{f.verification_note}</p></div>}
+        {(f.temporary_action||f.permanent_action)&&<div className="follow-action-summary">{f.temporary_action&&<div><span>Temporary / ชั่วคราว</span><p>{f.temporary_action}</p></div>}{f.permanent_action&&<div><span>Planned action / งานที่จะทำ</span><p>{f.permanent_action}</p></div>}</div>}
+        {evidence.work_result&&<div className="verification-box"><b>สิ่งที่ทำจริง / Work result</b><p>{evidence.work_result}</p></div>}
+        {evidence.verification_note&&<div className="verification-box"><b>Verification / ผลยืนยัน</b><p>{evidence.verification_note}</p></div>}
         {rolePlanner(profile.role)&&<footer><Button size="sm" icon={Wrench} onClick={()=>setSelected(f)}>{actionPending?'Plan Action':'Update Action'} <small>{actionPending?'วางแผนแก้ไข':'อัปเดตงาน'}</small></Button>{f.status!=='closed'&&<Button size="sm" variant="ghost" onClick={()=>onCreateTPM(f)}>Create TPM <small>นำเข้าแผน</small></Button>}</footer>}
       </article>
     }):<Empty title="No follow-up" text="ไม่มีงานติดตามตามเงื่อนไข"/>}</div>

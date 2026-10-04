@@ -60,17 +60,18 @@ export function periodRepairMetrics({repairs=[],machines=[],from,to,hoursPerDay=
 
 export function tpmMetrics(jobs=[],from,to){
   const start=new Date(`${from}T00:00:00`), end=new Date(`${to}T23:59:59`)
-  const rows=jobs.filter(j=>{const d=new Date(`${j.planned_date}T00:00:00`);return d>=start&&d<=end && j.job_status!=='cancelled'})
-  const completed=rows.filter(j=>['completed','partial'].includes(j.job_status)).length
-  return {rows,completed,completion:pct(completed,rows.length),overdue:rows.filter(j=>!['completed','partial'].includes(j.job_status)&&new Date(`${j.planned_date}T23:59:59`)<new Date()).length}
+  const rows=jobs.filter(j=>{const d=new Date(`${j.planned_date}T00:00:00`);return d>=start&&d<=end && j.job_status!=='cancelled' && j.work_type!=='pm_scheduled'})
+  const completed=rows.filter(j=>j.job_status==='completed').length
+  return {rows,completed,completion:pct(completed,rows.length),overdue:rows.filter(j=>j.job_status!=='completed'&&new Date(`${j.planned_date}T23:59:59`)<new Date()).length}
 }
 
 export function pmMetrics(schedule=[],from,to){
   const start=new Date(`${from}T00:00:00`),end=new Date(`${to}T23:59:59`)
   const due=schedule.filter(x=>{const d=new Date(`${x.due_date}T00:00:00`);return d>=start&&d<=end})
   const completed=due.filter(x=>x.status==='completed'||x.completed_at).length
-  const overdue=schedule.filter(x=>!x.completed_at&&x.status!=='completed'&&new Date(`${x.due_date}T23:59:59`)<new Date()).length
-  return {due,completed,compliance:pct(completed,due.length),overdue}
+  const onTime=due.filter(x=>x.completed_at&&new Date(x.completed_at)<=new Date(`${x.due_date}T23:59:59`)).length
+  const overdue=schedule.filter(x=>!x.completed_at&&x.status!=='completed'&&x.status!=='skipped'&&new Date(`${x.due_date}T23:59:59`)<new Date()).length
+  return {due,completed,onTime,compliance:pct(onTime,due.length),overdue}
 }
 
 export function defectMetrics(findings=[],from,to){
@@ -90,4 +91,9 @@ export function topLossMachines(repairs=[],limit=8){
   const map=new Map()
   repairs.forEach(r=>{const k=r.machine_no_snapshot||'-';const cur=map.get(k)||{machine:k,loss:0,count:0,issues:new Map()};cur.loss+=Number(r.loss_time_min)||0;cur.count++;const issue=r.symptom||'Unknown';cur.issues.set(issue,(cur.issues.get(issue)||0)+1);map.set(k,cur)})
   return [...map.values()].map(x=>({...x,topIssue:[...x.issues.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]||'-'})).sort((a,b)=>b.loss-a.loss).slice(0,limit)
+}
+
+export function paretoData(data=[],limit=10){
+ const total=data.reduce((sum,x)=>sum+(Number(x.value)||0),0);let cumulative=0
+ return {total,rows:data.slice(0,limit).map(x=>{cumulative+=Number(x.value)||0;return {...x,cumulativePct:total?cumulative/total*100:0}})}
 }

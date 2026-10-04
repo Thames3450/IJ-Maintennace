@@ -1,31 +1,43 @@
-# IJ Maintenance Unified System v13.0 — No Login
+# IJ Maintenance v13.7 — มาตรฐาน PM และหน้าจอใหม่
 
-React + Vite maintenance system for IJ Department using the existing MPR Maintenance Supabase database.
+PM มีใบมาตรฐาน ตารางรอบงาน และประวัติผลรายข้อของตัวเอง มีแม่แบบ 5 รอบ: สัปดาห์ เดือน 3 เดือน 6 เดือน และปี เก็บ revision ของมาตรฐานไว้ในใบงาน และสร้างรอบถัดไปได้เมื่อปิด PM
 
-## v13 change
-- Removed the Login page completely.
-- Opening the site goes directly to Main Menu.
-- Uses the Supabase publishable key with IJ-scoped anonymous RLS policies.
-- No Admin password, service-role key, or private credential is stored in the frontend.
-- GitHub Pages workflow is included in `.github/workflows/deploy-pages.yml`.
+ปรับตัวอักษรและการจัดวางทุกเมนู: เนื้อหา 16px ข้อความรองอย่างน้อย 14px หัวข้อ 24–30px ภาษาไทยเป็นหลัก รองรับคอมพิวเตอร์และมือถือโดยไม่ย่อทั้งหน้า
 
-## Run locally
-```bash
-npm install
-npm run dev
-```
-Open `http://localhost:5173`.
+## เริ่มใช้งาน
 
-## Build
-```bash
-npm run build
-```
+1. แตก ZIP และเปิดโฟลเดอร์ `ij-system-v13.7`
+2. ใช้ Node.js 20 ขึ้นไป แล้วรัน `npm ci`
+3. รัน `npm run dev` เพื่อเปิดเครื่องพัฒนา หรือ `npm run build` เพื่อสร้างเว็บ
+4. สำหรับ GitHub Pages อัปโหลดไฟล์ภายในโฟลเดอร์นี้เป็น root ของ repository และใช้ workflow ที่ให้มา
+5. สำหรับโฮสต์ static ให้นำ **ไฟล์ภายใน `dist/` ทั้งหมด** ขึ้นโฮสต์ โดยคงโครงสร้าง assets และ icons
 
-## Important security note
-No Login means possession of the published GitHub Pages URL is effectively access to this IJ web application. The v13 Supabase policies intentionally permit the anonymous web role to read/write the IJ maintenance module. Do not publish this URL broadly or use this mode if the system later needs multiple users or confidential access control.
+ไฟล์ `.env.example` แสดงตัวแปรที่รองรับ คงโหมดเปิดใช้โดยไม่ Login และใช้ publishable key ตามโครงการเดิม
 
+## ฐานข้อมูล PM
 
-## v13.3 branding
-- Replaced the web/app icon with the new pastel-blue IJ gear and wrench logo.
-- Transparent browser/favicon artwork with no white border.
-- Sidebar and startup screen now use the same IJ logo.
+ติดตั้ง migration `supabase/migrations/20261002132257_ij_pm_standards_and_orders.sql` ใน Supabase โครงการที่เว็บเชื่อมอยู่ **เพียงครั้งเดียว**
+
+**ฐานข้อมูลโครงการที่ระบุในโค้ดชุดนี้ติดตั้งแล้วเมื่อ 2 ตุลาคม 2026** ไม่ต้องรันซ้ำ การติดตั้งเพิ่มตาราง `ij_pm_standards`, `ij_pm_orders` และ RPC สำหรับบันทึกมาตรฐาน สร้างรอบ เริ่มงาน และปิด PM รายละเอียดอยู่ใน `docs/PM_STANDARD_TH.md`
+
+เมื่อย้ายไปโครงการอื่น ต้องมีฐาน MPR/IJ เดิมที่เข้ากันได้และติดตั้ง migration PM ไฟล์ SQL เวอร์ชันเก่าเป็นข้อมูลอ้างอิง ไม่ใช่ขั้นตอนสร้างฐานข้อมูลทั้งหมดจากศูนย์
+
+## ตรวจสอบ
+
+- `npm test`: 16 กรณีของตรรกะงานซ่อมและ PM
+- `npm run test:database`: 16 กรณีใน PostgreSQL ภายในเครื่อง ทดสอบ migration, RLS, trigger, transaction และการบันทึกซ้ำ
+- `npm run test:browser`: 25 กรณีผ่าน Chromium จำลอง API ไม่เขียนข้อมูลใช้งานจริง
+- หากยังไม่มี Chromium ให้รัน `npx playwright install chromium` ก่อนทดสอบหน้าจอ
+- `npm run build`: สร้างไฟล์พร้อมโฮสต์
+
+คู่มือ: `docs/USER_GUIDE_TH.md` และ `docs/PM_STANDARD_TH.md`
+สิ่งที่แก้และผลทดสอบ: `docs/AUDIT_TH.md`
+ภาพหน้าจอ: `docs/screenshots/desktop/` และ `docs/screenshots/mobile/`
+
+## รูปภาพและ QR เครื่องจักร (v13.7)
+
+งานตรวจสภาพและแจ้งจุดผิดปกติมีปุ่มแยก ถ่ายรูป / เลือกจากเครื่อง รองรับหลายรูปในปุ่มเลือกไฟล์ โดยใช้ข้อจำกัดเดิม (ตรวจสภาพ 3 รูปต่อจุด / Defect 4 รูป รูปละไม่เกิน 10 MB)
+
+เปิดศูนย์ข้อมูลเครื่องจักร > พิมพ์ QR ของแต่ละเครื่อง หรือพิมพ์เครื่องที่แสดง > ตรวจ URL เว็บจริง > เลือกเครื่อง > พิมพ์ / บันทึก PDF ป้ายมีเลขเครื่องและ QR ที่เปิด #history?machine=รหัสเครื่อง โดยตรง URL ต้องเข้าถึงได้จากมือถือและรวม path โครงการ GitHub Pages ถ้ามี ไม่ใช้ localhost สแกนทดสอบหนึ่งป้ายก่อนพิมพ์ทั้งหมด ฟังก์ชันสร้าง QR ทำงานในเว็บ ไม่ส่ง URL ไปบริการสร้าง QR ภายนอก
+
+ไฟล์นี้ยังต้องนำขึ้นโฮสต์เดิมก่อนใช้งานจริง ไม่ต้องเปลี่ยนฐานข้อมูลเพิ่มสำหรับรูปและ QR

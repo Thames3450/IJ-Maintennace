@@ -1,0 +1,113 @@
+{
+  "scope": "Local browser with mocked Supabase; no production writes",
+  "results": [
+    {
+      "name": "all 14 pages render without React errors",
+      "passed": true
+    },
+    {
+      "name": "missing checklist gets 12 uninspected points; selection closes",
+      "passed": true
+    },
+    {
+      "name": "dropdown supports search, Enter, Escape, outside click",
+      "passed": true
+    },
+    {
+      "name": "normal inspection saves checked items and has no fake defect",
+      "passed": true
+    },
+    {
+      "name": "saved inspection can be opened to review every result",
+      "passed": true
+    },
+    {
+      "name": "failed inspection cleans up partial rows, retry preserves the entered result",
+      "passed": true
+    },
+    {
+      "name": "abnormal inspection creates follow-up with photo evidence",
+      "passed": true
+    },
+    {
+      "name": "partial work resumes; start explicitly updates job state",
+      "passed": true
+    },
+    {
+      "name": "finish requires actual result; zero downtime is preserved; partial remains open",
+      "passed": true
+    },
+    {
+      "name": "closed follow-up requires owner, actual work and verification",
+      "passed": true
+    },
+    {
+      "name": "request rejects zero quantity; API failure keeps entered values",
+      "passed": true
+    },
+    {
+      "name": "no-row status update is shown as error",
+      "passed": true
+    },
+    {
+      "name": "PM has independent standards, five templates and a due-today work order",
+      "passed": true
+    },
+    {
+      "name": "PM starts unchecked; completion validation is separate from TPM",
+      "passed": true
+    },
+    {
+      "name": "PM saves actual zero, handover and next cycle without creating a TPM job",
+      "passed": true
+    },
+    {
+      "name": "PM template approval requires reference, scope and reviewer; order uses approved standard",
+      "passed": true
+    },
+    {
+      "name": "history ignores a slower response for the previous machine",
+      "passed": true
+    },
+    {
+      "name": "back and refresh preserve selected page",
+      "passed": true
+    },
+    {
+      "name": "plan retry reuses already created rows after a later API failure",
+      "passed": true
+    },
+    {
+      "name": "department KPI settings never overwrite a machine-specific record",
+      "passed": true
+    },
+    {
+      "name": "partial loading failure is visible and refresh can recover",
+      "passed": true
+    },
+    {
+      "name": "desktop UI uses readable fonts and stays within the viewport on every page",
+      "passed": true
+    },
+    {
+      "name": "mobile picker closes on tap; popup stays in viewport",
+      "passed": true
+    },
+    {
+      "name": "mobile pages have 14px minimum text and no sideways page scrolling",
+      "passed": true
+    },
+    {
+      "name": "numeric checklist saves an actual zero value",
+      "passed": true
+    },
+    {
+      "name": "QR labels decode to the correct machine; reload and back retain routing; print excludes controls",
+      "passed": true
+    },
+    {
+      "name": "camera and gallery are distinct pickers in defect and inspection forms",
+      "passed": true
+    }
+  ]
+}

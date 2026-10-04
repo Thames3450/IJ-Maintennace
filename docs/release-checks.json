@@ -1,0 +1,17 @@
+{
+  "version": "13.7",
+  "date": "2026-10-03",
+  "unit": 18,
+  "database": 16,
+  "browser": 27,
+  "pages": 14,
+  "desktop_width": 1280,
+  "mobile_width": 390,
+  "minimum_visible_text_px": 14,
+  "pm_templates": 5,
+  "pm_template_items": 29,
+  "migration_applied": true,
+  "frontend_published": false,
+  "production_test_records_created": 0,
+  "qr_decode_verified": true
+}

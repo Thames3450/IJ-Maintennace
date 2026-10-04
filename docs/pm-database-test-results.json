@@ -1,0 +1,70 @@
+{
+  "scope": "Local PostgreSQL (PGlite), real migration/RLS/triggers/RPC, no production records",
+  "passed": 16,
+  "checks": [
+    {
+      "name": "anon creates IJ draft through SECURITY INVOKER RPC",
+      "passed": true
+    },
+    {
+      "name": "draft cannot be scheduled",
+      "passed": true
+    },
+    {
+      "name": "approved standards require OEM reference",
+      "passed": true
+    },
+    {
+      "name": "standard retry is idempotent and approved revision is immutable",
+      "passed": true
+    },
+    {
+      "name": "IJ-only RLS blocks other department standards and machine assignment",
+      "passed": true
+    },
+    {
+      "name": "create order uses approved snapshot; retry never duplicates",
+      "passed": true
+    },
+    {
+      "name": "incomplete PM cannot close; failed save leaves planned state",
+      "passed": true
+    },
+    {
+      "name": "draft progress is persisted independently of TPM",
+      "passed": true
+    },
+    {
+      "name": "explicit start returns actual start time and is idempotent",
+      "passed": true
+    },
+    {
+      "name": "PM snapshot cannot be replaced during work",
+      "passed": true
+    },
+    {
+      "name": "all N/A PM cannot complete",
+      "passed": true
+    },
+    {
+      "name": "PM completes atomically and creates one next cycle",
+      "passed": true
+    },
+    {
+      "name": "completion retry never changes timestamp or duplicates next cycle",
+      "passed": true
+    },
+    {
+      "name": "completed PM rejects direct overwrite and delete",
+      "passed": true
+    },
+    {
+      "name": "backend rejects out-of-range pass and missing measured value",
+      "passed": true
+    },
+    {
+      "name": "zero measurement saves and monthly recurrence clamps Jan 31",
+      "passed": true
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 import React,{useEffect,useMemo,useState} from 'react'
 import { Activity, Gauge, Wrench, Timer, AlertTriangle, Settings2, Target, FileBarChart, Search, Clock3, CheckCircle2, TrendingUp, Repeat2, PackageSearch, CalendarDays } from '../icons.jsx'
-import { Badge, Button, Modal, PageIntro, SelectMenu } from '../components/UI.jsx'
+import { Badge, Button, Modal, PageIntro, SelectMenu, FormError } from '../components/UI.jsx'
 import { isoDate, machineGroup, minutesToHuman } from '../lib/utils.js'
-import { periodRepairMetrics,tpmMetrics,pmMetrics,defectMetrics,topLossMachines } from '../lib/kpi.js'
+import { periodRepairMetrics,tpmMetrics,pmMetrics,defectMetrics,topLossMachines,paretoData } from '../lib/kpi.js'
 
 const num=n=>Number(n)||0
 const dateKey=v=>String(v||'').slice(0,10)
@@ -95,7 +95,7 @@ export default function KPI({profile,machines,jobs,repairs,findings,pmSchedule,k
         <Field label="Machine Group" th="กลุ่มเครื่อง"><SelectMenu value={group} onChange={v=>{setGroup(v);setMachine('')}} options={[{value:'',label:'All IJ',sub:'ทั้งแผนก'},...groups.map(g=>({value:g,label:g,sub:'กลุ่มเครื่อง'}))]}/></Field>
         <Field label="Machine" th="เครื่องจักร" wide><SelectMenu searchable value={machine} onChange={setMachine} options={[{value:'',label:'All machines',sub:'ทุกเครื่อง'},...machines.filter(m=>!group||machineGroup(m.machine_no)===group).sort((a,b)=>a.machine_no.localeCompare(b.machine_no,undefined,{numeric:true})).map(m=>({value:m.id,label:m.machine_no,sub:m.machine_name||'เครื่องจักร'}))]}/></Field>
         <div className="scope-summary"><CalendarDays size={18}/><div><b>{fmtRange(from,to)}</b><small>{scopedMachines.length} machine(s) · {trend.granularityLabel}</small></div></div>
-        <Button icon={Search}>Analyze KPI <small>วิเคราะห์ KPI</small></Button>
+        <span className="workflow-help">อัปเดตผลวิเคราะห์อัตโนมัติเมื่อเปลี่ยนตัวกรอง</span>
       </div>
     </section>
 
@@ -228,8 +228,8 @@ function RankBars({data=[],unit=''}){
 
 function ParetoEnterprise({data=[]}){
   if(!data.length)return <NoData/>
-  const rows=data.slice(0,10),total=rows.reduce((s,x)=>s+num(x.value),0)||1,max=Math.max(...rows.map(x=>num(x.value)),1);let cum=0
-  return <div className="pareto-enterprise">{rows.map((x,i)=>{cum+=num(x.value);const cp=cum/total*100;return <div className="pareto-ent-row" key={i}><span>{i+1}</span><b title={x.label}>{x.label}</b><div className="pareto-ent-track"><i style={{width:`${Math.max(3,num(x.value)/max*100)}%`}}/></div><strong>{formatMetric(num(x.value)/60)} h</strong><em>{cp.toFixed(0)}%</em></div>})}<div className="pareto-note">Cumulative % · เปอร์เซ็นต์สะสมของ Loss Time</div></div>
+  const {rows}=paretoData(data,10),max=Math.max(...rows.map(x=>num(x.value)),1)
+  return <div className="pareto-enterprise">{rows.map((x,i)=>{const cp=x.cumulativePct;return <div className="pareto-ent-row" key={i}><span>{i+1}</span><b title={x.label}>{x.label}</b><div className="pareto-ent-track"><i style={{width:`${Math.max(3,num(x.value)/max*100)}%`}}/></div><strong>{formatMetric(num(x.value)/60)} h</strong><em>{cp.toFixed(0)}%</em></div>})}<div className="pareto-note">Cumulative % · เปอร์เซ็นต์สะสมของ Loss Time</div></div>
 }
 
 function MachineRiskTable({rows=[],expanded=false}){
@@ -286,7 +286,15 @@ function formatDataLabel(v,unit=''){if(v===null||v===undefined||!Number.isFinite
 function fmtRange(from,to){const a=new Date(`${from}T00:00:00`),b=new Date(`${to}T00:00:00`);const same=a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth();return same?a.toLocaleDateString('en-US',{month:'long',year:'numeric'}):`${a.toLocaleDateString('en-US',{month:'short',year:'numeric'})} → ${b.toLocaleDateString('en-US',{month:'short',year:'numeric'})}`}
 
 function KpiSettingsModal({open,onClose,settings,onSave}){
-  const [f,setF]=useState({})
+  const [f,setF]=useState({}),[saving,setSaving]=useState(false),[error,setError]=useState('')
+  const submit=async()=>{
+    if(saving)return
+    setError('')
+    if(Object.values(f).some(v=>v!==''&&(!Number.isFinite(Number(v))||Number(v)<0)))return setError('ค่าเป้าหมายต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป')
+    if(Number(f.hours_per_day)<=0||Number(f.hours_per_day)>24||Number(f.days_per_week)<=0||Number(f.days_per_week)>7)return setError('ชั่วโมงต่อวันต้อง 1–24 และวันต่อสัปดาห์ต้อง 1–7')
+    if(Object.entries(f).some(([k,v])=>['target_availability','target_tpm_completion','target_pm_compliance','target_defect_closure'].includes(k)&&Number(v)>100))return setError('ค่าเปอร์เซ็นต์ต้องไม่เกิน 100')
+    setSaving(true);try{await onSave(f)}catch(e){setError(`บันทึกไม่สำเร็จ: ${e.message}`)}finally{setSaving(false)}
+  }
   useEffect(()=>{if(open)setF({hours_per_day:settings.hours_per_day??24,days_per_week:settings.days_per_week??7,target_availability:settings.target_availability??80,target_mtbf_hr:settings.target_mtbf_hr??100,target_mttr_min:settings.target_mttr_min??37,target_tpm_completion:settings.target_tpm_completion??100,target_pm_compliance:settings.target_pm_compliance??100,target_defect_closure:settings.target_defect_closure??100})},[open,settings])
-  return <Modal open={open} onClose={onClose} eyebrow="KPI CONFIGURATION" title="KPI Target Settings" subtitle="ตั้งค่าเป้าหมาย KPI ของแผนก IJ" footer={<><Button variant="ghost" onClick={onClose}>Cancel · ยกเลิก</Button><Button onClick={()=>onSave(f)}>Save Targets · บันทึก</Button></>}><div className="form-grid"><label>Operating Hours / Day <small>ชั่วโมงเดินเครื่องต่อวัน</small><input type="number" value={f.hours_per_day??''} onChange={e=>setF({...f,hours_per_day:e.target.value})}/></label><label>Days / Week <small>วันทำงานต่อสัปดาห์</small><input type="number" value={f.days_per_week??''} onChange={e=>setF({...f,days_per_week:e.target.value})}/></label><label>Availability Target (%)<input type="number" step="0.01" value={f.target_availability??''} onChange={e=>setF({...f,target_availability:e.target.value})}/></label><label>MTBF Target (h)<input type="number" value={f.target_mtbf_hr??''} onChange={e=>setF({...f,target_mtbf_hr:e.target.value})}/></label><label>MTTR Target (min)<input type="number" value={f.target_mttr_min??''} onChange={e=>setF({...f,target_mttr_min:e.target.value})}/></label><label>TPM Completion Target (%)<input type="number" value={f.target_tpm_completion??''} onChange={e=>setF({...f,target_tpm_completion:e.target.value})}/></label><label>PM Compliance Target (%)<input type="number" value={f.target_pm_compliance??''} onChange={e=>setF({...f,target_pm_compliance:e.target.value})}/></label><label>Defect Closure Target (%)<input type="number" value={f.target_defect_closure??''} onChange={e=>setF({...f,target_defect_closure:e.target.value})}/></label></div></Modal>
+  return <Modal busy={saving} open={open} onClose={onClose} eyebrow="KPI CONFIGURATION" title="KPI Target Settings" subtitle="ตั้งค่าเป้าหมาย KPI ของแผนก IJ" footer={<><Button disabled={saving} variant="ghost" onClick={onClose}>Cancel · ยกเลิก</Button><Button loading={saving} onClick={submit}>Save Targets · บันทึก</Button></>}><FormError message={error}/><div className="form-grid"><label>Operating Hours / Day <small>ชั่วโมงเดินเครื่องต่อวัน</small><input type="number" value={f.hours_per_day??''} onChange={e=>setF({...f,hours_per_day:e.target.value})}/></label><label>Days / Week <small>วันทำงานต่อสัปดาห์</small><input type="number" value={f.days_per_week??''} onChange={e=>setF({...f,days_per_week:e.target.value})}/></label><label>Availability Target (%)<input type="number" step="0.01" value={f.target_availability??''} onChange={e=>setF({...f,target_availability:e.target.value})}/></label><label>MTBF Target (h)<input type="number" value={f.target_mtbf_hr??''} onChange={e=>setF({...f,target_mtbf_hr:e.target.value})}/></label><label>MTTR Target (min)<input type="number" value={f.target_mttr_min??''} onChange={e=>setF({...f,target_mttr_min:e.target.value})}/></label><label>TPM Completion Target (%)<input type="number" value={f.target_tpm_completion??''} onChange={e=>setF({...f,target_tpm_completion:e.target.value})}/></label><label>PM Compliance Target (%)<input type="number" value={f.target_pm_compliance??''} onChange={e=>setF({...f,target_pm_compliance:e.target.value})}/></label><label>Defect Closure Target (%)<input type="number" value={f.target_defect_closure??''} onChange={e=>setF({...f,target_defect_closure:e.target.value})}/></label></div></Modal>
 }

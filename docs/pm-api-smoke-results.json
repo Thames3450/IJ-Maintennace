@@ -1,0 +1,20 @@
+{
+  "scope": "Real publishable-key API; reads and missing-ID rejection only; no record writes",
+  "statuses": [
+    {
+      "table": "ij_pm_standards",
+      "read": true,
+      "rows": 0
+    },
+    {
+      "table": "ij_pm_orders",
+      "read": true,
+      "rows": 0
+    },
+    {
+      "rpc": "ij_pm_start_order",
+      "permission": true,
+      "missingOrderRejected": true
+    }
+  ]
+}

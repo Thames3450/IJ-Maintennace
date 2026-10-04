@@ -1,4 +1,4 @@
-# Deploy v13.0 to GitHub Pages
+# Deploy v13.5 to GitHub Pages
 
 This build does not have a login page.
 
@@ -19,7 +19,7 @@ Repository → Settings → Pages → Build and deployment → Source: **GitHub 
 This is intentional no-login mode. Anyone who can reach the Pages URL can use the IJ web app under the IJ-scoped public database policies.
 
 
-## v13.3 branding
+## v13.5 branding
 - Replaced the web/app icon with the new pastel-blue IJ gear and wrench logo.
 - Transparent browser/favicon artwork with no white border.
 - Sidebar and startup screen now use the same IJ logo.

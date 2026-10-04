@@ -1,10 +1,12 @@
 export const fmtDate = (value) => {
   if (!value) return '-'
   const d = new Date(String(value).length === 10 ? `${value}T00:00:00` : value)
+  if(Number.isNaN(d.getTime()))return '-'
   return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(d)
 }
 export const fmtDateTime = (value) => {
   if (!value) return '-'
+  if(Number.isNaN(new Date(value).getTime()))return '-'
   return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12:false }).format(new Date(value))
 }
 export const isoDate = (d = new Date()) => {
