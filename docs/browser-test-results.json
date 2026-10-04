@@ -108,6 +108,18 @@
     {
       "name": "camera and gallery are distinct pickers in defect and inspection forms",
       "passed": true
+    },
+    {
+      "name": "follow-up shows next action, overdue filter, searchable owner and expandable evidence",
+      "passed": true
+    },
+    {
+      "name": "TPM view-switch text fits inside buttons at 390, 768, 1280 and 1693 pixels",
+      "passed": true
+    },
+    {
+      "name": "all 12 English inspection points and methods have Thai on entry and saved history",
+      "passed": true
     }
   ]
 }

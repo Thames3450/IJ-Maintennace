@@ -1,3 +1,4 @@
+import {inspectionThai} from '../lib/inspectionThai.js'
 import PhotoActions from '../components/PhotoActions.jsx'
 import React,{useEffect,useMemo,useState} from 'react'
 import { Plus, AlertTriangle, CheckCircle2, Eye, Save, Camera, Trash2 } from '../icons.jsx'
@@ -105,7 +106,7 @@ export default function Inspection({machines,inspections,templates,templateItems
     <Modal open={open} busy={saving} onClose={closeModal} wide eyebrow="CONDITION BASED MAINTENANCE" title="Machine Condition Inspection" subtitle="ตรวจสภาพเครื่อง" footer={<><span className="muted">ตรวจแล้ว {rows.filter(r=>r.result_status).length}/{rows.length} ข้อ · เลือกผลให้ครบก่อนบันทึก</span><Button loading={saving} icon={Save} onClick={submit}>Save Inspection <small>บันทึก</small></Button></>}>
       <FormError message={error}/>
       <div className="workflow-help">เลือกเครื่อง → ตรวจทีละข้อและเลือกผล → บันทึกผลตรวจ</div>
-      <div className="inspection-form-head"><label>Machine <small>เครื่องจักร</small><SelectMenu searchable value={machine} onChange={setMachine} options={[{value:'',label:'Select machine',sub:'เลือกเครื่อง'},...machines.map(m=>({value:m.id,label:m.machine_no,sub:m.machine_name||'เครื่องจักร'}))]}/></label><label>Checklist <small>รายการตรวจ</small><SelectMenu value={template} onChange={changeTemplate} options={activeTemplates.map(t=>({value:t.id,label:t.name,sub:`Every ${t.frequency_days||'-'} days · รอบการตรวจ`}))}/></label></div>
+      <div className="inspection-form-head"><label>Machine <small>เครื่องจักร</small><SelectMenu searchable value={machine} onChange={setMachine} options={[{value:'',label:'Select machine',sub:'เลือกเครื่อง'},...machines.map(m=>({value:m.id,label:m.machine_no,sub:m.machine_name||'เครื่องจักร'}))]}/></label><label>Checklist <small>รายการตรวจ</small><SelectMenu value={template} onChange={changeTemplate} options={activeTemplates.map(t=>({value:t.id,label:t.name,sub:`ทุก ${t.frequency_days||'-'} วัน · รอบการตรวจ`}))}/></label></div>
       {template===FALLBACK_TEMPLATE.id&&<details className="inspection-checklist-info"><summary>รายการตรวจพื้นฐาน IJ · 12 จุดตรวจ</summary><p>ตรวจจากภายนอกระหว่างเดินเครื่อง งานซ่อมและทดสอบระบบนิรภัยให้ทำตามขั้นตอนหยุดเครื่องที่อนุมัติ</p></details>}
 
       <div className="inspection-checklist">
@@ -116,9 +117,9 @@ export default function Inspection({machines,inspections,templates,templateItems
           return <div className={`inspection-check-row state-${r.result_status}`} key={r.key||r.template_item_id||idx}>
             <span className="check-index">{idx+1}</span>
             <div>
-              <b>{r.item_name}</b>
-              {r.inspection_method&&<p className="inspection-method">{r.inspection_method}</p>}
-              <small>Criticality {r.criticality} · {r.criticality==='A'?'Critical / วิกฤต':r.criticality==='B'?'Important / สำคัญ':'Routine / ทั่วไป'}</small>
+              <b className="inspection-item-title">{inspectionThai(r.item_name)}</b>
+              {r.inspection_method&&<p className="inspection-method">{inspectionThai(r.inspection_method,'method')}</p>}
+              <small>ความสำคัญ {r.criticality} · {r.criticality==='A'?'วิกฤต / Critical':r.criticality==='B'?'สำคัญ / Important':'ทั่วไป / Routine'}</small>
               {photoRequired&&<small className="photo-required">Photo required when abnormal · ต้องมีรูปเมื่อผิดปกติ</small>}
             </div>
             <SelectMenu compact value={r.result_status} onChange={v=>update(idx,{result_status:v})} options={[{value:'',label:'ยังไม่ได้ตรวจ',sub:'เลือกผลหลังตรวจจริง'},{value:'normal',label:'Normal',sub:'ปกติ'},{value:'watch',label:'Watch',sub:'เฝ้าระวัง'},{value:'abnormal',label:'Abnormal',sub:'ผิดปกติ'},{value:'na',label:'N/A',sub:'ไม่เกี่ยวข้อง'}]}/>

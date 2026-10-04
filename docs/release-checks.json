@@ -1,9 +1,9 @@
 {
-  "version": "13.7",
-  "date": "2026-10-03",
+  "version": "13.9",
+  "date": "2026-10-04",
   "unit": 18,
   "database": 16,
-  "browser": 27,
+  "browser": 30,
   "pages": 14,
   "desktop_width": 1280,
   "mobile_width": 390,
@@ -13,5 +13,14 @@
   "migration_applied": true,
   "frontend_published": false,
   "production_test_records_created": 0,
-  "qr_decode_verified": true
+  "qr_decode_verified": true,
+  "tpm_button_bounds_widths": [
+    390,
+    768,
+    1280,
+    1693
+  ],
+  "database_test_scope": "16 tests from unchanged v13.6 migration",
+  "inspection_thai_points": 12,
+  "inspection_thai_methods": 10
 }
