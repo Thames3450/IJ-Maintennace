@@ -1,4 +1,3 @@
-import {sessionToken,setSessionToken} from './lib/employeeSession.js'
 import React, { useCallback, useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase.js'
 import {readPaged} from './lib/readPaged.js'
@@ -11,7 +10,6 @@ import {pmOrderAsSchedule} from './lib/pm.js'
 import {savePMStandard,createPMOrder,startPMOrder,savePMResult} from './lib/pmService.js'
 import {nonNegative,positiveQuantity,validDate,confirmedUpdate} from './lib/validation.js'
 import { isoDate, mondayOf, rolePlanner, naturalMachineSort } from './lib/utils.js'
-import {canOpenPage,defaultPageForRole,isEngineer,isMaintainer,isManager,isProduction} from './lib/access.js'
 import Layout from './components/Layout.jsx'
 import PlanBuilder from './components/PlanBuilder.jsx'
 import ExecutionModal from './components/ExecutionModal.jsx'
@@ -31,8 +29,6 @@ import SpareParts from './pages/SpareParts.jsx'
 import PMStandard from './pages/PMStandard.jsx'
 import Reports from './pages/Reports.jsx'
 import MainMenu from './pages/MainMenu.jsx'
-import UserManagement from './pages/UserManagement.jsx'
-import AccessGate from './components/AccessGate.jsx'
 
 export default function App(){
   const [profile,setProfile]=useState(null)
@@ -52,10 +48,10 @@ export default function App(){
   const [opportunities,setOpportunities]=useState([])
   const [spareRequests,setSpareRequests]=useState([])
   const [kpiSettings,setKpiSettings]=useState([])
-  const pageIds=['menu','dashboard','assets','weekly','inspection','defects','followup','opportunity','history','repairs','kpi','spares','pm','reports','users']
+  const pageIds=['menu','dashboard','assets','weekly','inspection','defects','followup','opportunity','history','repairs','kpi','spares','pm','reports']
   const pageFromHash=()=>{const p=window.location.hash.slice(1).split('?')[0];return pageIds.includes(p)?p:'menu'}
   const [page,setPageState]=useState(pageFromHash)
-  const setPage=p=>{if(pageIds.includes(p)&&(!profile||canOpenPage(profile.role,p))){window.location.hash=p;setPageState(p);window.scrollTo({top:0})}}
+  const setPage=p=>{if(pageIds.includes(p)){window.location.hash=p;setPageState(p);window.scrollTo({top:0})}}
   useEffect(()=>{const change=()=>{setPageState(pageFromHash());setHistoryFocus(new URLSearchParams(window.location.hash.split('?')[1]||'').get('machine')||'')};window.addEventListener('hashchange',change);return()=>window.removeEventListener('hashchange',change)},[])
   const [dataErrors,setDataErrors]=useState([]),[lastSync,setLastSync]=useState(null)
   const toastTimer=useRef(null),jobLocks=useRef(new Set()),loadSequence=useRef(0)
@@ -74,6 +70,12 @@ export default function App(){
   const [followupFocus,setFollowupFocus]=useState('')
 
   const notify=useCallback((message,type='ok')=>{setToast({message,type});clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(null),type==='error'?8000:4000)},[])
+
+  const loadProfile=useCallback(async()=>{
+    const {data,error}=await supabase.from('app_profiles').select('id,auth_user_id,employee_code,full_name,department_id,role,shift,position').eq('username','ij-web').eq('is_active',true).single()
+    if(error) throw error
+    setProfile(data); return data
+  },[])
 
   const loadAll=useCallback(async(userProfile=profile)=>{
     if(!userProfile) return
@@ -140,94 +142,54 @@ export default function App(){
       if(listReady&&!map.opportunities.error)setOpportunities(map.opportunities.data||[])
       if(listReady&&!map.spares.error)setSpareRequests(map.spares.data||[])
       if(!map.kpi.error)setKpiSettings(map.kpi.data||[])
-      const {data:team,error:teamError}=await supabase.rpc('ij_access_assignees')
-      const teamMembers=!teamError?(team||[]):(isMaintainer(userProfile.role)?[userProfile]:[])
-      setTechnicians(teamMembers)
-      if(teamError)failures.push('team')
       if(listReady&&!map.jobs.error){
         let enriched=map.jobs.data||[]
         try{
           const {data:assignees,error}=await readPaged(supabase.from('ij_tpm_job_assignees').select('id,job_id,profile_id,is_lead').order('id'),7000)
           if(error)throw error
-          const jobIds=new Set(enriched.map(j=>j.id));const rel=(assignees||[]).filter(a=>jobIds.has(a.job_id))
-          const pMap=new Map(teamMembers.map(x=>[x.id,x])),byJob=new Map();rel.forEach(a=>{if(!byJob.has(a.job_id))byJob.set(a.job_id,[]);byJob.get(a.job_id).push({...a,assignee_profile:pMap.get(a.profile_id)||null})})
+          const jobIds=new Set(enriched.map(j=>j.id));const rel=(assignees||[]).filter(a=>jobIds.has(a.job_id));const profileIds=[...new Set(rel.map(a=>a.profile_id).filter(Boolean))]
+          const profiles=[];for(let i=0;i<profileIds.length;i+=100){const {data,error:pErr}=await supabase.from('app_profiles').select('id,full_name,employee_code,shift').in('id',profileIds.slice(i,i+100));if(pErr)throw pErr;profiles.push(...(data||[]))}
+          const pMap=new Map(profiles.map(x=>[x.id,x])),byJob=new Map();rel.forEach(a=>{if(!byJob.has(a.job_id))byJob.set(a.job_id,[]);byJob.get(a.job_id).push({...a,assignee_profile:pMap.get(a.profile_id)||null})})
           enriched=enriched.map(j=>({...j,ij_tpm_job_assignees:byJob.get(j.id)||[]}))
         }catch(e){failures.push('assignees');console.error('[IJ] assignee merge failed',e);enriched=enriched.map(j=>({...j,ij_tpm_job_assignees:[]}))}
         setJobs(enriched)
       }
+      if(rolePlanner(userProfile.role)){
+        const {data:t,error}=await supabase.from('app_profiles').select('id,employee_code,full_name,role,shift,department_id').eq('is_active',true).eq('department_id',dept.id).in('role',['technician','supervisor']).order('full_name')
+        if(!error)setTechnicians(t||[]);else failures.push('technicians')
+      }else setTechnicians([userProfile])
       if(sequence!==loadSequence.current)return false
       setDataErrors(failures);if(!failures.length)setLastSync(new Date())
       return failures.length===0
     }catch(e){console.error('[IJ] refresh failed',e);setDataErrors(['connection']);return false}finally{if(sequence===loadSequence.current)setRefreshing(false)}
   },[profile])
 
-  const enterSystem=useCallback(async p=>{
-    if(!p?.id)return
-    localStorage.setItem('ij_employee_code',p.employee_code||'')
-    setProfile(p)
-    const wanted=window.location.hash&&window.location.hash!=='#menu'?pageFromHash():defaultPageForRole(p.role)
-    const landing=canOpenPage(p.role,wanted)?wanted:defaultPageForRole(p.role)
-    setPageState(landing)
-    if(window.location.hash!==`#${landing}`&&!window.location.hash.includes('?'))window.location.hash=landing
-    await loadAll(p)
-  },[loadAll])
-
-  const logout=useCallback(async()=>{
-    const request=supabase.rpc('ij_session_logout').then(()=>{}).catch(()=>{})
-    // Fetch has captured the outgoing session before clearing it.
-    await Promise.race([request,new Promise(resolve=>setTimeout(resolve,3000))])
-    setSessionToken('');localStorage.removeItem('ij_employee_code');++loadSequence.current
-    setProfile(null);setDepartment(null);setMachines([]);setJobs([]);setTechnicians([]);setDataErrors([])
-    setRepairs([]);setFindings([]);setInspections([]);setSpareRequests([]);setPmOrders([]);setPmStandards([]);setOpportunities([])
-    setPlanOpen(false);setFinishJob(null);setFindingOpen(false);setDeleteTarget(null);setEditingGroup(null);setPlanSource(null)
-    window.location.hash='menu';setPageState('menu')
-  },[])
-
-  const boot=useCallback(async()=>{
-    setLoading(true)
-    try{
-      if(sessionToken()){const {data,error}=await supabase.rpc('ij_session_current');if(error)throw error;if(data?.id)await enterSystem(data);else setSessionToken('')}
-    }catch(e){console.error(e);setSessionToken('')}finally{setLoading(false)}
-  },[enterSystem])
+  const boot=useCallback(async()=>{setLoading(true);try{const p=await loadProfile();if(p)await loadAll(p)}catch(e){console.error(e);notify(e.message||'System loading failed · โหลดระบบไม่สำเร็จ','error')}finally{setLoading(false)}},[loadProfile,loadAll,notify])
   useEffect(()=>{boot()},[])
-  useEffect(()=>{
-    if(!profile)return
-    let cancelled=false
-    const verify=async()=>{const {data,error}=await supabase.rpc('ij_session_current');if(cancelled||error)return;if(!data?.id){await logout();return}setProfile(data)}
-    const timer=setInterval(verify,60000),visible=()=>{if(document.visibilityState==='visible')verify()}
-    document.addEventListener('visibilitychange',visible)
-    return()=>{cancelled=true;clearInterval(timer);document.removeEventListener('visibilitychange',visible)}
-  },[profile?.id,logout])
 
-  useEffect(()=>{if(profile&&!canOpenPage(profile.role,page))setPage(defaultPageForRole(profile.role))},[profile,page])
-
-  const openNewPlan=(date='')=>{if(!isEngineer(profile?.role))return notify('เฉพาะ Engineer / Admin ที่สร้างแผนได้','error');const chosen=typeof date==='string'?date:'';setEditingGroup(null);setPlanSource(null);setPlanInitialDate(chosen);setPlanOpen(true)}
-  const openEditGroup=id=>{if(!isEngineer(profile?.role))return notify('เฉพาะ Engineer / Admin ที่แก้ไขแผนได้','error');setEditingGroup(jobs.filter(j=>(j.plan_group_id||j.id)===id));setPlanSource(null);setPlanInitialDate('');setPlanOpen(true)}
-  const openSource=(type,data)=>{if(!isEngineer(profile?.role))return notify('เฉพาะ Engineer / Admin ที่สร้างแผนติดตามได้','error');if(type==='finding'){if(data.status==='closed')return notify('งานนี้ปิดแล้ว','error');const linked=jobs.find(j=>j.source_finding_id===data.id&&!['completed','cancelled'].includes(j.job_status));if(linked){openTPM(linked);notify('งานนี้มีแผน TPM แล้ว เปิดงานเดิมให้แล้ว');return}}setEditingGroup(null);setPlanSource({type,data});setPlanInitialDate(type==='pm'?(data?.due_date||''):'');setPlanOpen(true)}
+  const openNewPlan=(date='')=>{const chosen=typeof date==='string'?date:'';setEditingGroup(null);setPlanSource(null);setPlanInitialDate(chosen);setPlanOpen(true)}
+  const openEditGroup=id=>{setEditingGroup(jobs.filter(j=>(j.plan_group_id||j.id)===id));setPlanSource(null);setPlanInitialDate('');setPlanOpen(true)}
+  const openSource=(type,data)=>{if(type==='finding'){if(data.status==='closed')return notify('งานนี้ปิดแล้ว','error');const linked=jobs.find(j=>j.source_finding_id===data.id&&!['completed','cancelled'].includes(j.job_status));if(linked){openTPM(linked);notify('งานนี้มีแผน TPM แล้ว เปิดงานเดิมให้แล้ว');return}}setEditingGroup(null);setPlanSource({type,data});setPlanInitialDate(type==='pm'?(data?.due_date||''):'');setPlanOpen(true)}
   const openMachine=id=>{window.location.hash=`history?machine=${encodeURIComponent(id)}`;setHistoryFocus(id);setPageState('history');window.scrollTo({top:0})}
   const openFollowUp=f=>{setFollowupFocus(f.id);setPage('followup')}
 
   const openTPM=job=>{setTpmFocus(job);setPage('weekly')}
   const requestDelete=(kind,record)=>setDeleteTarget({kind,records:Array.isArray(record)?record:[record]})
-  const deleteRecords=async target=>{if(!isEngineer(profile?.role))throw new Error('ไม่มีสิทธิ์ลบรายการ');await workflowRPC('ij_delete_records',{p_record_type:target.kind,p_record_ids:target.records.map(r=>r.id),p_confirmed:true});const ids=new Set(target.records.map(r=>r.id)),setters={finding:setFindings,tpm_job:setJobs,inspection:setInspections,opportunity:setOpportunities,spare_request:setSpareRequests,pm_order:setPmOrders,pm_standard:setPmStandards,repair:setRepairs};setters[target.kind]?.(rows=>rows.filter(r=>!ids.has(r.id)));setDeletedRecords(rows=>[...rows,...target.records.map(r=>({record_type:target.kind,record_id:r.id}))]);await loadAll(profile);notify(`ลบออกจากรายการแล้ว ${target.records.length} รายการ`)}
+  const deleteRecords=async target=>{await workflowRPC('ij_delete_records',{p_record_type:target.kind,p_record_ids:target.records.map(r=>r.id),p_confirmed:true});const ids=new Set(target.records.map(r=>r.id)),setters={finding:setFindings,tpm_job:setJobs,inspection:setInspections,opportunity:setOpportunities,spare_request:setSpareRequests,pm_order:setPmOrders,pm_standard:setPmStandards,repair:setRepairs};setters[target.kind]?.(rows=>rows.filter(r=>!ids.has(r.id)));setDeletedRecords(rows=>[...rows,...target.records.map(r=>({record_type:target.kind,record_id:r.id}))]);await loadAll(profile);notify(`ลบออกจากรายการแล้ว ${target.records.length} รายการ`)}
 
   const savePlan=async({meta,rows,assignees,onRowSaved})=>{
     if(!department||!profile)return
-    if(!isEngineer(profile.role))throw new Error('เฉพาะ Engineer / Admin ที่สร้างหรือแก้ไขแผนได้')
     if(!validDate(meta.date))throw new Error('วันที่แผนไม่ถูกต้อง')
     rows.forEach(row=>nonNegative(row.planned_stop_min,'เวลาหยุดตามแผน'))
-    const groupId=meta.group_id||editingGroup?.[0]?.plan_group_id||editingGroup?.[0]?.id||crypto.randomUUID()
-    const needsProduction=rows.some(r=>r.need_machine_stop)
-    const productionStatus=needsProduction?'waiting':'not_required'
-    const managerStatus='waiting'
+    const groupId=meta.group_id||editingGroup?.[0]?.plan_group_id||editingGroup?.[0]?.id||crypto.randomUUID(),ready=['confirmed','not_required'].includes(meta.production_status)&&['approved','not_required'].includes(meta.manager_status)
     let firstJobId=null
     const savedIds=new Set()
     for(let i=0;i<rows.length;i++){
-      const row=rows[i],existing=editingGroup?.find(j=>j.id===row.id),current=existing?.job_status,jobStatus=['in_progress','completed','partial','cancelled'].includes(current)?current:'draft'
+      const row=rows[i],existing=editingGroup?.find(j=>j.id===row.id),current=existing?.job_status,jobStatus=['in_progress','completed','partial','cancelled'].includes(current)?current:(ready?'planned':'draft')
       const source={source_repair_report_id:null,source_finding_id:null,source_opportunity_id:null,source_pm_plan_id:null}
       if(planSource&&i===0){if(planSource.type==='repair')source.source_repair_report_id=planSource.data.id;if(planSource.type==='finding')source.source_finding_id=row.source_finding_id||null;if(planSource.type==='opportunity')source.source_opportunity_id=planSource.data.id;if(planSource.type==='pm')source.source_pm_plan_id=planSource.data.plan_id||null}
       if(row.source_finding_id&&planSource?.type==='finding'&&row.machine_id!==planSource.data.machine_id)throw new Error('งานติดตามต้องเป็นเครื่องเดิมที่พบปัญหา')
-      const payload={department_id:department.id,machine_id:row.machine_id,work_type:row.work_type,title:row.title.trim(),details:row.details||null,reason_trigger:row.reason_trigger||null,priority:row.priority,planned_date:meta.date,planned_start_time:meta.time||null,planned_stop_min:row.need_machine_stop?nonNegative(row.planned_stop_min):0,need_machine_stop:row.need_machine_stop,production_status:['in_progress','completed','partial','cancelled'].includes(current)?existing.production_status:productionStatus,manager_status:['in_progress','completed','partial','cancelled'].includes(current)?existing.manager_status:managerStatus,job_status:jobStatus,plan_group_id:groupId,plan_group_name:meta.name||null,plan_group_note:meta.note||null,sequence_no:i,...(existing?{}:source)}
+      const payload={department_id:department.id,machine_id:row.machine_id,work_type:row.work_type,title:row.title.trim(),details:row.details||null,reason_trigger:row.reason_trigger||null,priority:row.priority,planned_date:meta.date,planned_start_time:meta.time||null,planned_stop_min:row.need_machine_stop?nonNegative(row.planned_stop_min):0,need_machine_stop:row.need_machine_stop,production_status:meta.production_status,manager_status:meta.manager_status,job_status:jobStatus,plan_group_id:groupId,plan_group_name:meta.name||null,plan_group_note:meta.note||null,sequence_no:i,...(existing?{}:source)}
       let jobId=row.id
       if(jobId){await confirmedUpdate(supabase.from('ij_tpm_jobs').update(payload).eq('id',jobId))}else{const {data,error}=await supabase.from('ij_tpm_jobs').insert({...payload,created_by:profile.id}).select('id').single();if(error)throw error;jobId=data.id;onRowSaved?.(row.key,jobId)}
       savedIds.add(jobId)
@@ -241,26 +203,12 @@ export default function App(){
     setPlanSource(null);await loadAll(profile);notify('บันทึกแผน TPM แล้ว')
   }
 
-  const planDecision=async(groupId,action,note='',proposedDate=null)=>{
-    if(!profile)return
-    const {error}=await supabase.rpc('ij_access_plan_decision',{p_actor_employee_code:profile.employee_code,p_group_id:groupId,p_action:action,p_note:note||null,p_proposed_date:proposedDate||null})
-    if(error)throw error
-    await loadAll(profile)
-    notify(action==='confirm'?'Production ยืนยันช่วงหยุดเครื่องแล้ว':action==='change'?'ส่งข้อเสนอเลื่อนแผนแล้ว':action==='approve'?'Manager อนุมัติแผนแล้ว':'ส่งแผนกลับพร้อมความเห็นแล้ว')
-  }
-
   const startJob=async job=>{
-    if(!isMaintainer(profile?.role))return notify('ตำแหน่งนี้ไม่สามารถเริ่มงาน Maintenance ได้','error')
-    const assigned=(job.ij_tpm_job_assignees||[]).some(a=>a.profile_id===profile.id)
-    if(!isEngineer(profile.role)&&!assigned)return notify('งานนี้ไม่ได้มอบหมายให้คุณ','error')
     if(jobLocks.current.has(job.id))return
     jobLocks.current.add(job.id)
     try{await workflowRPC('ij_tpm_start_job',{p_job_id:job.id});await loadAll(profile);notify(`เริ่มงานแล้ว · ${job.machines?.machine_no||''}`)}catch(e){notify(e.message,'error')}finally{jobLocks.current.delete(job.id)}
   }
   const completeJob=async(job,form)=>{
-    if(!isMaintainer(profile?.role))throw new Error('ตำแหน่งนี้ไม่สามารถบันทึกผล Maintenance ได้')
-    const assigned=(job.ij_tpm_job_assignees||[]).some(a=>a.profile_id===profile.id)
-    if(!isEngineer(profile.role)&&!assigned)throw new Error('งานนี้ไม่ได้มอบหมายให้คุณ')
     if(jobLocks.current.has(job.id))throw new Error('กำลังบันทึกงานนี้ กรุณารอสักครู่')
     if(!form.result_summary?.trim())throw new Error('กรุณาระบุผลการทำงานจริง')
     const stop=nonNegative(form.actual_stop_min,'เวลาหยุดจริง')
@@ -279,7 +227,6 @@ export default function App(){
 
 
   const saveFinding=async form=>{
-    if(!isMaintainer(profile?.role))throw new Error('เฉพาะ Engineer / Technician ที่บันทึก Defect ได้')
     const {data:finding,error}=await supabase.from('ij_tpm_findings').insert({department_id:department.id,machine_id:form.machine_id,job_id:form.job_id||null,finding:form.finding.trim(),risk:form.risk||null,priority:form.priority,status:'open',spare_required:false,need_machine_stop:false,found_by:form.found_by,source_type:form.job_id?'tpm':'manual',finding_type:'defect'}).select('id').single()
     if(error)throw error
     const machineInfo=machines.find(m=>m.id===form.machine_id)
@@ -302,15 +249,12 @@ export default function App(){
     else notify('Defect saved · บันทึกจุดผิดปกติแล้ว')
   }
   const saveFollowUpAction=async(f,form)=>{
-    if(!isMaintainer(profile?.role))throw new Error('ตำแหน่งนี้แก้ไข Follow-up ไม่ได้')
-    if(!isEngineer(profile.role)){const linked=jobs.filter(j=>j.source_finding_id===f.id);const assigned=linked.some(j=>(j.ij_tpm_job_assignees||[]).some(a=>a.profile_id===profile.id));if(f.owner_profile_id!==profile.id&&!assigned)throw new Error('งานติดตามนี้ไม่ได้มอบหมายให้คุณ')}
     await workflowRPC('ij_followup_save',{p_finding_id:f.id,p_action:form})
     await loadAll(profile)
     notify(form.status==='closed'?'ยืนยันผลและปิดงานแล้ว':'บันทึกความคืบหน้าแล้ว')
   }
 
   const saveInspection=async({machine_id,template_id,rows,note,started_at})=>{
-    if(!isMaintainer(profile?.role))throw new Error('เฉพาะ Engineer / Technician ที่ตรวจเครื่องได้')
     if(!rows.length||rows.some(r=>!['normal','watch','abnormal','na'].includes(r.result_status)))throw new Error('กรุณาเลือกผลตรวจให้ครบทุกข้อ')
     if(rows.every(r=>r.result_status==='na'))throw new Error('ต้องมีจุดตรวจจริงอย่างน้อย 1 ข้อ')
     const {score,overall}=inspectionSummary(rows)
@@ -360,23 +304,22 @@ export default function App(){
     else notify(`Inspection completed · ตรวจเสร็จแล้ว · Condition ${score}%`)
   }
 
-  const saveOpportunity=async form=>{if(!isMaintainer(profile?.role))throw new Error('ตำแหน่งนี้เพิ่ม Opportunity ไม่ได้');const {error}=await supabase.from('ij_opportunities').insert({department_id:department.id,machine_id:form.machine_id||null,category:form.category,title:form.title.trim(),details:form.details||null,expected_benefit:form.expected_benefit||null,priority:form.priority,status:'open',target_date:form.target_date||null,created_by:profile.id,source_type:'manual'});if(error)throw error;await loadAll(profile);notify('Opportunity saved · บันทึก Opportunity แล้ว')}
-  const updateOpportunity=async(o,status)=>{if(!isEngineer(profile?.role))throw new Error('เฉพาะ Engineer / Admin ที่ปิด Opportunity ได้');const {error}=await supabase.from('ij_opportunities').update({status,completed_at:status==='completed'?new Date().toISOString():null}).eq('id',o.id);if(error)return notify(error.message,'error');await loadAll(profile);notify('Opportunity updated · อัปเดต Opportunity แล้ว')}
+  const saveOpportunity=async form=>{const {error}=await supabase.from('ij_opportunities').insert({department_id:department.id,machine_id:form.machine_id||null,category:form.category,title:form.title.trim(),details:form.details||null,expected_benefit:form.expected_benefit||null,priority:form.priority,status:'open',target_date:form.target_date||null,created_by:profile.id,source_type:'manual'});if(error)throw error;await loadAll(profile);notify('Opportunity saved · บันทึก Opportunity แล้ว')}
+  const updateOpportunity=async(o,status)=>{const {error}=await supabase.from('ij_opportunities').update({status,completed_at:status==='completed'?new Date().toISOString():null}).eq('id',o.id);if(error)return notify(error.message,'error');await loadAll(profile);notify('Opportunity updated · อัปเดต Opportunity แล้ว')}
 
-  const saveSpare=async form=>{if(!isMaintainer(profile?.role))throw new Error('เฉพาะ Engineer / Technician ที่ขออะไหล่ได้');const payload={department_id:department.id,machine_id:form.machine_id||null,requester_profile_id:profile.id,requester_name_snapshot:profile.full_name,requester_code_snapshot:profile.employee_code||null,requester_shift_snapshot:profile.shift||null,requester_role_snapshot:profile.role,source_type:'technician',requested_part_name:form.requested_part_name.trim(),requested_part_no:form.requested_part_no||null,requested_specification:form.requested_specification||null,requested_reason:form.requested_reason.trim(),part_name:form.requested_part_name.trim(),part_no:form.requested_part_no||null,specification:form.requested_specification||null,quantity:positiveQuantity(form.quantity),unit:form.unit||'pcs',urgency:form.urgency,remark:form.remark||null,status:'new'};const {error}=await supabase.from('spare_requests').insert(payload);if(error)throw error;await loadAll(profile);notify('Spare request submitted · ส่งคำขออะไหล่แล้ว')}
-  const updateSpareStatus=async(request,nextStatus)=>{if(!isEngineer(profile?.role)&&request.requester_profile_id!==profile.id)throw new Error('ไม่มีสิทธิ์อัปเดตคำขอนี้');const patch={status:nextStatus,status_changed_at:new Date().toISOString()};if(nextStatus==='closed'){patch.closed_by=profile.id;patch.closed_at=new Date().toISOString()}else{patch.closed_by=null;patch.closed_at=null}await confirmedUpdate(supabase.from('spare_requests').update(patch).eq('id',request.id));await loadAll(profile);notify(`Spare status updated · อัปเดตสถานะเป็น ${nextStatus.replaceAll('_',' ')}`)}
+  const saveSpare=async form=>{const payload={department_id:department.id,machine_id:form.machine_id||null,requester_profile_id:profile.id,requester_name_snapshot:profile.full_name,requester_code_snapshot:profile.employee_code||null,requester_shift_snapshot:profile.shift||null,requester_role_snapshot:profile.role,source_type:'technician',requested_part_name:form.requested_part_name.trim(),requested_part_no:form.requested_part_no||null,requested_specification:form.requested_specification||null,requested_reason:form.requested_reason.trim(),part_name:form.requested_part_name.trim(),part_no:form.requested_part_no||null,specification:form.requested_specification||null,quantity:positiveQuantity(form.quantity),unit:form.unit||'pcs',urgency:form.urgency,remark:form.remark||null,status:'new'};const {error}=await supabase.from('spare_requests').insert(payload);if(error)throw error;await loadAll(profile);notify('Spare request submitted · ส่งคำขออะไหล่แล้ว')}
+  const updateSpareStatus=async(request,nextStatus)=>{const patch={status:nextStatus,status_changed_at:new Date().toISOString()};if(nextStatus==='closed'){patch.closed_by=profile.id;patch.closed_at=new Date().toISOString()}else{patch.closed_by=null;patch.closed_at=null}await confirmedUpdate(supabase.from('spare_requests').update(patch).eq('id',request.id));await loadAll(profile);notify(`Spare status updated · อัปเดตสถานะเป็น ${nextStatus.replaceAll('_',' ')}`)}
 
-  const saveKpiSettings=async form=>{if(!isEngineer(profile?.role))throw new Error('เฉพาะ Engineer / Admin ที่ตั้งค่า KPI ได้');if(Object.values(form).some(v=>v!==''&&v!=null&&(!Number.isFinite(Number(v))||Number(v)<0)))throw new Error('ค่า KPI ต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');const clean=v=>v===''||v===null?null:Number(v);const current=kpiSettings.find(x=>x.machine_no==null);const payload={dept_code:'IJ',machine_no:null,hours_per_day:clean(form.hours_per_day)??24,days_per_week:clean(form.days_per_week)??7,target_availability:clean(form.target_availability)??95,target_mtbf_hr:clean(form.target_mtbf_hr),target_mttr_min:clean(form.target_mttr_min),target_tpm_completion:clean(form.target_tpm_completion),target_pm_compliance:clean(form.target_pm_compliance),target_defect_closure:clean(form.target_defect_closure),target_repeat_failure_pct:clean(form.target_repeat_failure_pct),updated_at:new Date().toISOString()};let error;if(current){await confirmedUpdate(supabase.from('kpi_settings').update(payload).eq('id',current.id))}else{({error}=await supabase.from('kpi_settings').insert(payload))}if(error)throw error;await loadAll(profile);notify('KPI targets saved · บันทึก KPI Targets แล้ว')}
+  const saveKpiSettings=async form=>{if(Object.values(form).some(v=>v!==''&&v!=null&&(!Number.isFinite(Number(v))||Number(v)<0)))throw new Error('ค่า KPI ต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');const clean=v=>v===''||v===null?null:Number(v);const current=kpiSettings.find(x=>x.machine_no==null);const payload={dept_code:'IJ',machine_no:null,hours_per_day:clean(form.hours_per_day)??24,days_per_week:clean(form.days_per_week)??7,target_availability:clean(form.target_availability)??95,target_mtbf_hr:clean(form.target_mtbf_hr),target_mttr_min:clean(form.target_mttr_min),target_tpm_completion:clean(form.target_tpm_completion),target_pm_compliance:clean(form.target_pm_compliance),target_defect_closure:clean(form.target_defect_closure),target_repeat_failure_pct:clean(form.target_repeat_failure_pct),updated_at:new Date().toISOString()};let error;if(current){await confirmedUpdate(supabase.from('kpi_settings').update(payload).eq('id',current.id))}else{({error}=await supabase.from('kpi_settings').insert(payload))}if(error)throw error;await loadAll(profile);notify('KPI targets saved · บันทึก KPI Targets แล้ว')}
 
-  if(loading)return <div className="boot-screen"><div className="boot-logo"><img src="./ij-maintenance-logo.png" alt="IJ Maintenance" /></div><div className="boot-copy"><b>Opening IJ Maintenance</b><small>กำลังตรวจสอบสิทธิ์ผู้ใช้งาน</small></div><Skeleton rows={3}/></div>
-  if(!profile)return <AccessGate initialCode={localStorage.getItem('ij_employee_code')||''} onApproved={async p=>{setLoading(true);try{await enterSystem(p)}catch(e){notify(e.message||'เข้าสู่ระบบไม่สำเร็จ','error')}finally{setLoading(false)}}}/>
-  if(!department)return <div className="boot-screen boot-error"><div className="boot-logo"><img src="./ij-maintenance-logo.png" alt="IJ Maintenance" /></div><div className="boot-copy"><b>Cannot open IJ Maintenance</b><small>โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</small><button className="btn primary" onClick={()=>loadAll(profile)}>Retry · ลองใหม่</button></div></div>
+  if(loading)return <div className="boot-screen"><div className="boot-logo"><img src="./ij-maintenance-logo.png" alt="IJ Maintenance" /></div><div className="boot-copy"><b>Opening IJ Maintenance</b><small>กำลังโหลดระบบโดยไม่ต้องเข้าสู่ระบบ</small></div><Skeleton rows={3}/></div>
+  if(!profile||!department)return <div className="boot-screen boot-error"><div className="boot-logo"><img src="./ij-maintenance-logo.png" alt="IJ Maintenance" /></div><div className="boot-copy"><b>Cannot open IJ Maintenance</b><small>โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</small><button className="btn primary" onClick={boot}>Retry · ลองใหม่</button></div></div>
 
   const pageNode={
     menu:<MainMenu profile={profile} jobs={jobs} repairs={repairs} findings={findings} spares={spareRequests} planner={rolePlanner(profile.role)} onNewFinding={()=>{setFindingJob(null);setFindingOpen(true)}} onGo={setPage} onNewPlan={openNewPlan}/>,
-    dashboard:<Dashboard jobs={jobs} repairs={repairs} findings={findings} inspections={inspections} pmSchedule={pmSchedule} kpiSettings={kpiSettings} machines={machines} onGo={setPage} onEditGroup={isEngineer(profile.role)?openEditGroup:()=>setPage('weekly')}/>,
+    dashboard:<Dashboard jobs={jobs} repairs={repairs} findings={findings} inspections={inspections} pmSchedule={pmSchedule} kpiSettings={kpiSettings} machines={machines} onGo={setPage} onEditGroup={openEditGroup}/>,
     assets:<Assets machines={machines} jobs={jobs} repairs={repairs} findings={findings} inspections={inspections} onOpenMachine={openMachine}/>,
-    weekly:<WeeklyPlan pmSchedule={pmSchedule} profile={profile} jobs={jobs.filter(j=>j.work_type!=='pm_scheduled')} machines={machines} weekStart={weekStart} setWeekStart={setWeekStart} onNewPlan={openNewPlan} onEditGroup={openEditGroup} onStart={startJob} onFinish={setFinishJob} onFinding={j=>{setFindingJob(j);setFindingOpen(true)}} onPostpone={postponeJob} initialJob={tpmFocus} onConsumedInitial={()=>setTpmFocus(null)} onDelete={rolePlanner(profile.role)?r=>requestDelete('tpm_job',r):null} onPlanDecision={planDecision}/>,
+    weekly:<WeeklyPlan profile={profile} jobs={jobs.filter(j=>j.work_type!=='pm_scheduled')} machines={machines} weekStart={weekStart} setWeekStart={setWeekStart} onNewPlan={openNewPlan} onEditGroup={openEditGroup} onStart={startJob} onFinish={setFinishJob} onFinding={j=>{setFindingJob(j);setFindingOpen(true)}} onPostpone={postponeJob} initialJob={tpmFocus} onConsumedInitial={()=>setTpmFocus(null)} onDelete={rolePlanner(profile.role)?r=>requestDelete('tpm_job',r):null}/>,
     inspection:<Inspection profile={profile} machines={machines} inspections={inspections} templates={inspectionTemplates} templateItems={inspectionItems} onSaveInspection={saveInspection} onOpenMachine={openMachine} onDelete={rolePlanner(profile.role)?r=>requestDelete('inspection',r):null}/>,
     defects:<Defects profile={profile} findings={findings} machines={machines} onNew={()=>{setFindingJob(null);setFindingOpen(true)}} onCreateTPM={f=>openSource('finding',f)} onFollowUp={openFollowUp} onDelete={rolePlanner(profile.role)?r=>requestDelete('finding',r):null}/>,
     followup:<FollowUp profile={profile} findings={findings} technicians={[...technicians,...(technicians.some(t=>t.id===profile.id)?[]:[profile])]} jobs={jobs} onOpenTPM={openTPM} onDelete={rolePlanner(profile.role)?r=>requestDelete('finding',r):null} onSaveAction={saveFollowUpAction} onCreateTPM={f=>openSource('finding',f)} initialFinding={followupFocus} onConsumedInitial={()=>setFollowupFocus('')}/>,
@@ -385,14 +328,13 @@ export default function App(){
     repairs:<RepairHistory profile={profile} repairs={repairs} machines={machines} onCreateTPM={r=>openSource('repair',r)} onDelete={rolePlanner(profile.role)?r=>requestDelete('repair',r):null}/>,
     kpi:<KPI profile={profile} machines={machines} jobs={jobs} repairs={repairs} findings={findings} pmSchedule={pmSchedule} kpiSettings={kpiSettings} onSaveSettings={saveKpiSettings}/>,
     spares:<SpareParts profile={profile} machines={machines} requests={spareRequests} onSave={saveSpare} onUpdateStatus={updateSpareStatus} onDelete={rolePlanner(profile.role)?r=>requestDelete('spare_request',r):null}/>,
-    pm:<PMStandard profile={profile} standards={pmStandards} orders={pmOrders} legacySchedule={legacyPMSchedule} machines={machines} onDeleteOrder={rolePlanner(profile.role)?r=>requestDelete('pm_order',r):null} onDeleteStandard={rolePlanner(profile.role)?r=>requestDelete('pm_standard',r):null} onSaveStandard={async f=>{if(!isEngineer(profile.role))throw new Error('เฉพาะ Engineer / Admin ที่จัดการมาตรฐาน PM ได้');await savePMStandard(f,department.id);await loadAll(profile);notify('บันทึกมาตรฐาน PM แล้ว')}} onCreateOrder={async f=>{if(!isEngineer(profile.role))throw new Error('เฉพาะ Engineer / Admin ที่จัดรอบ PM ได้');await createPMOrder(f);await loadAll(profile);notify('สร้างรอบ PM แล้ว')}} onStartOrder={async o=>{if(!isMaintainer(profile.role))throw new Error('เฉพาะ Engineer / Technician ที่ทำ PM ได้');const row=await startPMOrder(o);await loadAll(profile);return row}} onSaveResult={async(o,f,complete)=>{if(!isMaintainer(profile.role))throw new Error('เฉพาะ Engineer / Technician ที่บันทึกผล PM ได้');await savePMResult(o,f,complete);await loadAll(profile);notify(complete?'บันทึกและปิด PM แล้ว':'บันทึก PM ไว้ทำต่อแล้ว')}} onFinding={o=>{setFindingJob({machine_id:o.machine_id,machines:machines.find(m=>m.id===o.machine_id),title:o.standard_snapshot.title,initial_finding:`[PM ${o.standard_snapshot.code} · ${o.due_date}]\n`+o.results.filter(r=>r.result==='abnormal').map(r=>`${o.standard_snapshot.items.find(i=>i.id===r.item_id)?.name}: ${r.note}`).join('\n')});setFindingOpen(true)}}/>,
-    reports:<Reports machines={machines} jobs={jobs} repairs={repairs} findings={findings} inspections={inspections} kpiSettings={kpiSettings}/>,
-    users:<UserManagement profile={profile}/>
+    pm:<PMStandard standards={pmStandards} orders={pmOrders} legacySchedule={legacyPMSchedule} machines={machines} onDeleteOrder={rolePlanner(profile.role)?r=>requestDelete('pm_order',r):null} onDeleteStandard={rolePlanner(profile.role)?r=>requestDelete('pm_standard',r):null} onSaveStandard={async f=>{await savePMStandard(f,department.id);await loadAll(profile);notify('บันทึกมาตรฐาน PM แล้ว')}} onCreateOrder={async f=>{await createPMOrder(f);await loadAll(profile);notify('สร้างรอบ PM แล้ว')}} onStartOrder={async o=>{const row=await startPMOrder(o);await loadAll(profile);return row}} onSaveResult={async(o,f,complete)=>{await savePMResult(o,f,complete);await loadAll(profile);notify(complete?'บันทึกและปิด PM แล้ว':'บันทึก PM ไว้ทำต่อแล้ว')}} onFinding={o=>{setFindingJob({machine_id:o.machine_id,machines:machines.find(m=>m.id===o.machine_id),title:o.standard_snapshot.title,initial_finding:`[PM ${o.standard_snapshot.code} · ${o.due_date}]\n`+o.results.filter(r=>r.result==='abnormal').map(r=>`${o.standard_snapshot.items.find(i=>i.id===r.item_id)?.name}: ${r.note}`).join('\n')});setFindingOpen(true)}}/>,
+    reports:<Reports machines={machines} jobs={jobs} repairs={repairs} findings={findings} inspections={inspections} kpiSettings={kpiSettings}/>
   }[page]
 
   return <>
-    <Layout dataErrors={dataErrors} lastSynced={lastSync} page={page} setPage={setPage} profile={profile} onLogout={logout} onRefresh={()=>loadAll(profile)} onNewPlan={openNewPlan} planner={rolePlanner(profile.role)}>{refreshing&&<div className="sync-bar"><i/></div>}{dataErrors.length>0&&<div className="form-error" role="alert">โหลดข้อมูลบางส่วนไม่สำเร็จ ({dataErrors.join(', ')}) ข้อมูลสรุปอาจไม่ครบ <button type="button" onClick={()=>loadAll(profile)}>ลองโหลดใหม่</button></div>}{canOpenPage(profile.role,page)?pageNode:null}</Layout>
-    {isEngineer(profile.role)&&<PlanBuilder open={planOpen} onClose={()=>{setPlanOpen(false);setPlanInitialDate('')}} machines={machines} technicians={technicians} editingGroup={editingGroup} sourceContext={planSource} initialDate={planInitialDate} onSave={savePlan}/>}
+    <Layout dataErrors={dataErrors} lastSynced={lastSync} page={page} setPage={setPage} profile={profile} onRefresh={()=>loadAll(profile)} onNewPlan={openNewPlan} planner={rolePlanner(profile.role)}>{refreshing&&<div className="sync-bar"><i/></div>}{dataErrors.length>0&&<div className="form-error" role="alert">โหลดข้อมูลบางส่วนไม่สำเร็จ ({dataErrors.join(', ')}) ข้อมูลสรุปอาจไม่ครบ <button type="button" onClick={()=>loadAll(profile)}>ลองโหลดใหม่</button></div>}{pageNode}</Layout>
+    <PlanBuilder open={planOpen} onClose={()=>{setPlanOpen(false);setPlanInitialDate('')}} machines={machines} technicians={technicians} editingGroup={editingGroup} sourceContext={planSource} initialDate={planInitialDate} onSave={savePlan}/>
     <DeleteConfirmModal target={deleteTarget} onClose={()=>setDeleteTarget(null)} onDelete={deleteRecords}/>
     <ExecutionModal linkedFinding={findings.find(f=>f.id===finishJob?.source_finding_id)} otherOpenJobs={jobs.filter(j=>j.id!==finishJob?.id&&j.source_finding_id===finishJob?.source_finding_id&&!['completed','cancelled'].includes(j.job_status)).length} job={finishJob} open={!!finishJob} onClose={()=>setFinishJob(null)} onFinish={completeJob}/>
     <FindingModal open={findingOpen} onClose={()=>setFindingOpen(false)} machines={machines} job={findingJob} profile={profile} onSave={saveFinding}/>

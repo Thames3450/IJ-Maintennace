@@ -2,7 +2,6 @@ import React,{useMemo,useState} from 'react'
 import { AlertTriangle, Plus, Wrench, Camera, CalendarClock, Trash2 } from '../icons.jsx'
 import { Badge, Button, Empty, PageIntro, SelectMenu } from '../components/UI.jsx'
 import { fmtDateTime, rolePlanner, statusLabel } from '../lib/utils.js'
-import {isMaintainer} from '../lib/access.js'
 import PhotoAttachment from '../components/PhotoAttachment.jsx'
 
 export default function Defects({profile,findings,machines,onNew,onCreateTPM,onFollowUp,onDelete}){
@@ -14,7 +13,7 @@ export default function Defects({profile,findings,machines,onNew,onCreateTPM,onF
     .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),[findings,status,machine,priority])
 
   return <>
-    <PageIntro title="Defect Register" th="ทะเบียนจุดผิดปกติ" description="Record what was found first: machine, defect, risk, priority and photo evidence. Action planning is managed separately in Follow-up. · บันทึกสิ่งที่พบก่อน แล้วค่อยวางแผนแก้ไขในเมนู Follow-up">{isMaintainer(profile.role)&&<Button icon={Plus} onClick={onNew}>New Defect <small>เพิ่มจุดผิดปกติ</small></Button>}</PageIntro>
+    <PageIntro title="Defect Register" th="ทะเบียนจุดผิดปกติ" description="Record what was found first: machine, defect, risk, priority and photo evidence. Action planning is managed separately in Follow-up. · บันทึกสิ่งที่พบก่อน แล้วค่อยวางแผนแก้ไขในเมนู Follow-up"><Button icon={Plus} onClick={onNew}>New Defect <small>เพิ่มจุดผิดปกติ</small></Button></PageIntro>
 
     <section className="defect-process-note">
       <span><b>1</b>Find defect<small>พบปัญหา</small></span><i>→</i><span><b>2</b>Record evidence<small>บันทึก + รูป</small></span><i>→</i><span><b>3</b>Follow-up action<small>วางแผนแก้ไข</small></span><i>→</i><span><b>4</b>Verify & close<small>ยืนยันผลและปิด</small></span>
@@ -31,7 +30,7 @@ export default function Defects({profile,findings,machines,onNew,onCreateTPM,onF
         {photos.length>0?<div className="defect-photo-gallery">{photos.slice(0,4).map(p=><PhotoAttachment key={p.id} photo={p} defaultBucket="ij-defect-photos"/>)}</div>:<div className="defect-no-photo"><Camera size={15}/>No photo evidence · ไม่มีรูปประกอบ</div>}
         <div className="defect-source"><span>Source · ที่มา: {sourceText(f.source_type)}</span><span>{fmtDateTime(f.created_at)}</span></div>
         <div className="defect-register-status"><CalendarClock size={14}/><div><b>{followStatusText(f)}</b><small>{followStatusThai(f)}</small></div></div>
-        <footer>{isMaintainer(profile.role)&&<Button size="sm" icon={Wrench} onClick={()=>onFollowUp(f)}>Follow-up <small>ติดตามการแก้ไข</small></Button>}{rolePlanner(profile.role)&&<><Button size="sm" variant="ghost" onClick={()=>onCreateTPM(f)}>Create TPM <small>นำเข้าแผน</small></Button>{onDelete&&<Button size="sm" variant="ghost" className="delete-record-button" icon={Trash2} onClick={()=>onDelete(f)}>ลบรายการ</Button>}</>}</footer>
+        <footer>{rolePlanner(profile.role)&&<><Button size="sm" icon={Wrench} onClick={()=>onFollowUp(f)}>Follow-up <small>วางแผนแก้ไข</small></Button><Button size="sm" variant="ghost" onClick={()=>onCreateTPM(f)}>Create TPM <small>นำเข้าแผน</small></Button>{onDelete&&<Button size="sm" variant="ghost" className="delete-record-button" icon={Trash2} onClick={()=>onDelete(f)}>ลบรายการ</Button>}</>}</footer>
       </article>
     }):<Empty title="No matching defects" text="ไม่มี Defect ตามเงื่อนไข"/>}</div>
   </>

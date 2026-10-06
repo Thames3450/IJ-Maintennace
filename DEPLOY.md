@@ -1,25 +1,25 @@
-# Deploy IJ Maintenance v14.0 to GitHub Pages
+# Deploy v13.5 to GitHub Pages
+
+This build does not have a login page.
 
 ## GitHub Desktop
-1. Copy every file inside `ij-system-v14.0` over the root of the existing `IJ-Maintenance` repository.
-2. Do not copy or commit `node_modules` or an old `dist` folder.
-3. Open GitHub Desktop and commit, for example: `IJ Maintenance v14 role login`.
-4. Push origin to `main`.
-5. Open GitHub → Actions and wait for `Deploy IJ Maintenance to GitHub Pages` to complete.
-6. Open the Pages URL and hard refresh (`Ctrl + F5`).
+1. Copy all files from this project over the existing repository files.
+2. Open GitHub Desktop.
+3. Commit with a message such as `IJ Maintenance v13 no login`.
+4. Click **Push origin**.
+5. In GitHub, open **Actions** and wait for `Deploy IJ Maintenance to GitHub Pages` to finish.
+6. Open the Pages URL and hard refresh with `Ctrl + F5`.
 
-## Expected first screen
-The site opens at **Employee ID Login / เข้าสู่ระบบด้วยรหัสพนักงาน**.
-
-- Existing approved employee ID → opens the workspace for that role.
-- Unknown/unapproved employee ID → opens Registration → choose requested role → wait for Engineer/Admin approval.
-- Engineer/Admin can approve requests from **Users & Access / ผู้ใช้งานและสิทธิ์**.
-
-## Database
-The existing MPR Supabase project used by this system already has the v14 migration installed. Do not run it again on the current project. The migration file is kept in `supabase/migrations/20261004150000_ij_employee_role_access_v14.sql` for source control and deployment to a different compatible project.
+The site should open directly to **Main Menu**. There should be no Sign in screen.
 
 ## GitHub Pages setting
 Repository → Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 
-## Security note
-Employee-ID-only access is intentionally lightweight for internal workflow use. It does not prove identity if another person knows an employee ID. Add PIN/OTP/Supabase Auth later if stronger authentication is required.
+## Security
+This is intentional no-login mode. Anyone who can reach the Pages URL can use the IJ web app under the IJ-scoped public database policies.
+
+
+## v13.5 branding
+- Replaced the web/app icon with the new pastel-blue IJ gear and wrench logo.
+- Transparent browser/favicon artwork with no white border.
+- Sidebar and startup screen now use the same IJ logo.

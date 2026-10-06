@@ -2,7 +2,6 @@ import React,{useEffect,useMemo,useState} from 'react'
 import { Activity, Gauge, Wrench, Timer, AlertTriangle, Settings2, Target, FileBarChart, Search, Clock3, CheckCircle2, TrendingUp, Repeat2, PackageSearch, CalendarDays } from '../icons.jsx'
 import { Badge, Button, Modal, PageIntro, SelectMenu, FormError } from '../components/UI.jsx'
 import { isoDate, machineGroup, minutesToHuman } from '../lib/utils.js'
-import {isEngineer} from '../lib/access.js'
 import { periodRepairMetrics,tpmMetrics,pmMetrics,defectMetrics,topLossMachines,paretoData } from '../lib/kpi.js'
 
 const num=n=>Number(n)||0
@@ -82,7 +81,7 @@ export default function KPI({profile,machines,jobs,repairs,findings,pmSchedule,k
 
   return <>
     <PageIntro title="Maintenance KPI" th="ตัวชี้วัดงานซ่อมบำรุง" description="Enterprise reliability and loss dashboard using actual MPR Maintenance records. · วิเคราะห์ประสิทธิภาพ ความน่าเชื่อถือ และ Loss Time จากข้อมูลจริงในระบบ MPR">
-      {isEngineer(profile.role)&&<Button variant="ghost" icon={Settings2} onClick={()=>setSettingsOpen(true)}>KPI Targets <small>ตั้งค่าเป้าหมาย</small></Button>}
+      {profile.role==='admin'&&<Button variant="ghost" icon={Settings2} onClick={()=>setSettingsOpen(true)}>KPI Targets <small>ตั้งค่าเป้าหมาย</small></Button>}
     </PageIntro>
 
     <section className="kpi-v11-control card">
