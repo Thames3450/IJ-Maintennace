@@ -1,0 +1,58 @@
+{
+  "scope": "Local PostgreSQL / PGlite; real migrations, allow and deny tests; no production work records",
+  "passed": 13,
+  "checks": [
+    {
+      "name": "employee-code login returns expiring sessions and unknown employees get registration",
+      "passed": true
+    },
+    {
+      "name": "bare API cannot read jobs or use the old code-only login RPC",
+      "passed": true
+    },
+    {
+      "name": "registration is pending and cannot grant its requested engineer role",
+      "passed": true
+    },
+    {
+      "name": "manager sees plans but cannot mutate repairs, plans or impersonate engineer",
+      "passed": true
+    },
+    {
+      "name": "production cannot approve as manager and manager waits for production",
+      "passed": true
+    },
+    {
+      "name": "engineer can confirm production and approve with recorded actor",
+      "passed": true
+    },
+    {
+      "name": "engineer appears in assignees and can inspect and work across departments",
+      "passed": true
+    },
+    {
+      "name": "assigned technician can start TPM, cannot edit plan fields, and cannot approve",
+      "passed": true
+    },
+    {
+      "name": "started plan cannot be approved or returned even by engineer",
+      "passed": true
+    },
+    {
+      "name": "engineer approves pending registration once and cannot remove last engineer",
+      "passed": true
+    },
+    {
+      "name": "disabled user loses existing session immediately",
+      "passed": true
+    },
+    {
+      "name": "private photo policies deny signed-out and manager upload, permit maintainer",
+      "passed": true
+    },
+    {
+      "name": "logout invalidates the old token; expiry and invalid tokens fail closed",
+      "passed": true
+    }
+  ]
+}

@@ -38,7 +38,7 @@ export const workTypeLabel = (s='') => ({
   pm_scheduled:'PM · บำรุงรักษาตามรอบ', tpm_added:'TPM · งานเพิ่มตามสภาพ', follow_up:'Follow-up · งานติดตาม', improvement:'Improvement · ปรับปรุง', emergency_repair:'Repair · ซ่อม', repair:'Repair · ซ่อม', inspection:'Inspection · ตรวจสภาพ', finding:'Defect · จุดผิดปกติ', opportunity:'Opportunity · โอกาสปรับปรุง'
 }[s] || s)
 export const workTypeShort = (s='') => ({ pm_scheduled:'PM', tpm_added:'TPM', follow_up:'Follow-up', improvement:'Improvement', emergency_repair:'Repair', repair:'Repair', inspection:'Inspection', finding:'Defect', opportunity:'Opportunity' }[s] || s)
-export const rolePlanner = (role) => ['admin','supervisor'].includes(role)
+export const rolePlanner = (role) => ['engineer','admin','supervisor'].includes(role)
 export const uid = () => crypto.randomUUID()
 export const machineGroup = (machineNo='') => {
   const m=String(machineNo).match(/^(\d+)T/); return m ? `${m[1]}T` : 'Other'

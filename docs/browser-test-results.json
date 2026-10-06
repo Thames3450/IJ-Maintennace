@@ -2,6 +2,22 @@
   "scope": "Local browser with mocked private Supabase Storage; real PNG decode checks; no production writes",
   "results": [
     {
+      "name": "single employee field logs in; unknown code registers pending; logout clears session",
+      "passed": true
+    },
+    {
+      "name": "manager has correct menus, read access and maintenance actions",
+      "passed": true
+    },
+    {
+      "name": "production has correct menus, read access and maintenance actions",
+      "passed": true
+    },
+    {
+      "name": "technician has correct menus, read access and maintenance actions",
+      "passed": true
+    },
+    {
       "name": "all 14 pages render without React errors",
       "passed": true
     },
