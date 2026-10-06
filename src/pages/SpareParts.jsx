@@ -2,6 +2,7 @@ import React,{useMemo,useState} from 'react'
 import { PackageSearch, Plus, Search, Clock3, Wrench, RefreshCcw, ChevronDown, Trash2 } from '../icons.jsx'
 import { Badge, Button, Empty, Modal, PageIntro, SelectMenu, FormError } from '../components/UI.jsx'
 import { fmtDateTime, statusLabel, shortStatusLabel } from '../lib/utils.js'
+import {isEngineer,isMaintainer} from '../lib/access.js'
 
 const STATUSES=['new','review','ready','sent','follow_up','closed']
 export default function SpareParts({profile,machines,requests,onSave,onUpdateStatus,onDelete}){
@@ -10,11 +11,11 @@ export default function SpareParts({profile,machines,requests,onSave,onUpdateSta
   const [form,setForm]=useState({machine_id:'',requested_part_name:'',requested_part_no:'',requested_specification:'',requested_reason:'',quantity:1,unit:'pcs',urgency:'planned',remark:''})
   const rows=useMemo(()=>requests.filter(r=>!status||r.status===status).filter(r=>!q||[r.part_name,r.requested_part_name,r.requested_part_no,r.machine?.machine_no,r.requested_reason].some(v=>String(v||'').toLowerCase().includes(q.toLowerCase()))),[requests,status,q])
   const submit=async()=>{if(saving)return;setError('');if(!form.requested_part_name.trim()||!form.requested_reason.trim())return alert('Please enter part name and reason / กรุณาระบุชื่ออะไหล่และเหตุผล');if(!Number.isFinite(Number(form.quantity))||Number(form.quantity)<=0)return setError('จำนวนอะไหล่ต้องมากกว่า 0');setSaving(true);try{await onSave(form);setOpen(false);setForm({machine_id:'',requested_part_name:'',requested_part_no:'',requested_specification:'',requested_reason:'',quantity:1,unit:'pcs',urgency:'planned',remark:''})}catch(e){setError(`บันทึกไม่สำเร็จ: ${e.message||'กรุณาลองใหม่'}`)}finally{setSaving(false)}}
-  const canManage=r=>profile.role==='admin'||profile.role==='supervisor'||r.requester_profile_id===profile.id
+  const canManage=r=>isEngineer(profile.role)||r.requester_profile_id===profile.id
   const update=async(r,next)=>{if(next===r.status)return;setUpdating(r.id);try{await onUpdateStatus(r,next)}catch(e){setError(`อัปเดตไม่สำเร็จ: ${e.message}`)}finally{setUpdating('')}}
   return <>
     <PageIntro title="Spare Parts Requests" th="คำขออะไหล่" description="Track request status from New to Closed using the same MPR Maintenance database. · ติดตามสถานะคำขออะไหล่ในฐานเดียวกัน">
-      <Button icon={Plus} onClick={()=>setOpen(true)}>New Request <small>ขออะไหล่</small></Button>
+      {isMaintainer(profile.role)&&<Button icon={Plus} onClick={()=>setOpen(true)}>New Request <small>ขออะไหล่</small></Button>}
     </PageIntro>
     {!open&&<FormError message={error}/>}
     <section className="spare-toolbar"><div className="search-box"><Search size={17}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search part / machine · ค้นหาอะไหล่ / เครื่อง"/></div><SelectMenu value={status} onChange={setStatus} options={[{value:'',label:'All statuses',sub:'ทุกสถานะ'},...STATUSES.map(x=>{const [en,th]=statusLabel(x).split(' · ');return {value:x,label:en,sub:th||''}})]}/></section>
