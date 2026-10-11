@@ -321,17 +321,24 @@ export default function App(){
     const assigned=(job.ij_tpm_job_assignees||[]).some(a=>a.profile_id===profile.id)
     if(!isEngineer(profile.role)&&!assigned)throw new Error('งานนี้ไม่ได้มอบหมายให้คุณ')
     const execution=(job.ij_tpm_executions||[])[0]
-    if(!execution?.id)throw new Error('ยังไม่มีผลการทำงานให้แก้ไข')
-    if(!form.result_summary?.trim())throw new Error('กรุณาระบุผลการทำงานจริง')
     const stop=nonNegative(form.actual_stop_min,'เวลาหยุดจริง')
     if(jobLocks.current.has(job.id))throw new Error('กำลังบันทึกงานนี้ กรุณารอสักครู่')
     jobLocks.current.add(job.id)
     try{
       const {new_photos,deleted_photo_ids,verification_note,close_linked_finding,...editable}=form
-      await confirmedUpdate(supabase.from('ij_tpm_executions').update({result_summary:editable.result_summary.trim(),actual_stop_min:stop,parts_used:editable.parts_used||null,execution_note:editable.execution_note||null,abnormal_found:!!editable.abnormal_found,follow_up_required:!!editable.follow_up_required,updated_by:profile.id,updated_at:new Date().toISOString()}).eq('id',execution.id))
+      const resultSummary=editable.result_summary?.trim()||null
+      const partsUsed=editable.parts_used?.trim()||null
+      const executionNote=editable.execution_note?.trim()||null
+      const hasExecutionData=!!(resultSummary||stop>0||partsUsed||executionNote||editable.abnormal_found||editable.follow_up_required)
+      if(execution?.id){
+        await confirmedUpdate(supabase.from('ij_tpm_executions').update({result_summary:resultSummary,actual_stop_min:stop,parts_used:partsUsed,execution_note:executionNote,abnormal_found:!!editable.abnormal_found,follow_up_required:!!editable.follow_up_required,updated_by:profile.id,updated_at:new Date().toISOString()}).eq('id',execution.id))
+      }else if(hasExecutionData){
+        await confirmedUpdate(supabase.from('ij_tpm_executions').insert({job_id:job.id,actual_stop_min:stop,result_summary:resultSummary,parts_used:partsUsed,execution_note:executionNote,abnormal_found:!!editable.abnormal_found,follow_up_required:!!editable.follow_up_required,updated_by:profile.id,completion_status:job.job_status==='partial'?'partial':'completed'}))
+      }
       const warnings=await syncTpmPhotos(job,{new_photos,deleted_photo_ids})
       await loadAll(profile)
-      notify(warnings.length?`แก้ไขผล TPM แล้ว แต่รูปบางรูปอัปโหลดไม่สำเร็จ: ${warnings.join(', ')}`:'แก้ไขผล TPM และรูปภาพแล้ว',warnings.length?'error':'ok')
+      const savedText=execution?.id?'แก้ไขผล TPM และรูปภาพแล้ว':hasExecutionData?'เพิ่มผลย้อนหลังและรูปภาพแล้ว':'เพิ่ม/แก้ไขรูป TPM แล้ว'
+      notify(warnings.length?`${savedText} แต่รูปบางรูปอัปโหลดไม่สำเร็จ: ${warnings.join(', ')}`:savedText,warnings.length?'error':'ok')
     }finally{jobLocks.current.delete(job.id)}
   }
 

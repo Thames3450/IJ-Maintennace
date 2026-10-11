@@ -64,7 +64,9 @@ export default function ExecutionModal({job,open,onClose,onFinish,linkedFinding,
  const submit=async()=>{
   if(saving)return
   setError('')
-  if(!form.result_summary.trim())return setError('กรุณาระบุสิ่งที่ทำจริงและผลหลังทำ')
+  if(!editOnly&&!form.result_summary.trim())return setError('กรุณาระบุสิ่งที่ทำจริงและผลหลังทำ')
+  const hasEditData=!!(form.result_summary.trim()||Number(form.actual_stop_min)>0||form.parts_used.trim()||form.execution_note.trim()||form.abnormal_found||form.follow_up_required||totalPhotos||deletedPhotoIds.length)
+  if(editOnly&&!hasEditData)return setError('กรุณาแก้ไขข้อมูลหรือเพิ่มรูปภาพอย่างน้อย 1 รายการ')
   if(!Number.isInteger(Number(form.actual_stop_min))||Number(form.actual_stop_min)<0)return setError('เวลาหยุดจริงต้องเป็นจำนวนนาทีตั้งแต่ 0 ขึ้นไป')
   if(!editOnly&&form.completion_status==='partial'&&!form.execution_note.trim())return setError('กรุณาระบุงานที่ยังเหลือในหมายเหตุ')
   if(canClose&&form.close_linked_finding&&!form.verification_note?.trim())return setError('กรุณาระบุผลตรวจยืนยัน เพื่อปิดงานติดตามพร้อม TPM')
@@ -77,7 +79,7 @@ export default function ExecutionModal({job,open,onClose,onFinish,linkedFinding,
 
  return <Modal busy={saving} open={open} onClose={close} title={`${editOnly?'Edit TPM Result':'Complete Job'} · ${job.machines?.machine_no||''}`} subtitle={editOnly?'แก้ไขผลการทำงานและเพิ่มรูปภาพในรายการนี้':'บันทึกผลและปิดงาน'} eyebrow={editOnly?'EDIT WORK RESULT':'WORK RESULT'} footer={<><span className="muted">Plan date · วันที่แผน: {fmtDate(job.planned_date)}</span><div className="footer-actions"><Button disabled={saving} variant="ghost" onClick={close}><span className="button-bi">ยกเลิก<small>Cancel</small></span></Button><Button loading={saving} onClick={submit}><span className="button-bi">{editOnly?'บันทึกการแก้ไข':'บันทึกและปิดงาน'}<small>{editOnly?'Save Changes':'Save & Close'}</small></span></Button></div></>}>
   <FormError message={error}/>
-  {editOnly&&<div className="tpm-edit-notice"><b>Edit Result / แก้ไขผล TPM</b><span>แก้ผลการทำงาน เวลา อะไหล่ หมายเหตุ และเพิ่ม/ลบรูปได้ โดยไม่เปลี่ยนสถานะงานที่ปิดแล้ว</span></div>}
+  {editOnly&&<div className="tpm-edit-notice"><b>Edit Result / Photos · แก้ไขผล / รูป TPM</b><span>แก้ผลการทำงาน เวลา อะไหล่ หมายเหตุ หรือเพิ่ม/ลบรูปได้ แม้งาน Historical ที่ปิดไว้เดิมยังไม่มีผลการทำงานในระบบ</span></div>}
   {!editOnly&&linkedOpen&&<section className="linked-closeout"><strong>งานติดตามที่เชื่อมไว้</strong><p>{linkedFinding.finding}</p>{canClose?<><label className="linked-close-choice"><input type="checkbox" checked={!!form.close_linked_finding} onChange={e=>setForm({...form,close_linked_finding:e.target.checked})}/>ปิดงานติดตามพร้อม TPM</label>{form.close_linked_finding?<label>ผลตรวจยืนยันหลังแก้ไข<textarea rows="2" value={form.verification_note||''} onChange={e=>setForm({...form,verification_note:e.target.value})} placeholder="เช่น ทดลองเดินเครื่องแล้ว ไม่พบลมรั่วซ้ำ"/></label>:<small>ส่งผลแก้ไขกลับไปที่งานติดตาม และรอตรวจยืนยัน</small>}</>:<small>{otherOpenJobs?`ยังมี TPM ที่เชื่อมไว้ ${otherOpenJobs} งาน ให้ทำให้ครบก่อนปิดงานติดตาม`:'ผลจะส่งกลับไปที่งานติดตาม โดยยังเปิดไว้ให้ทำต่อ'}</small>}</section>}
   <div className="form-grid">
    <label className="span-2">Work result <small>ผลการทำงาน</small><textarea rows="4" value={form.result_summary} onChange={e=>setForm({...form,result_summary:e.target.value})} placeholder="What was found and what was done / สิ่งที่พบและสิ่งที่ดำเนินการ"/></label>

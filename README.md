@@ -1,4 +1,4 @@
-# IJ Maintenance v14.1.1
+# IJ Maintenance v14.1.2
 
 **Hotfix:** Employee-ID login now creates an IJ web session and automatically sends `x-ij-session` with every Supabase request. This fixes the post-login `Cannot open IJ Maintenance` screen caused by session-restricted RLS. TPM editable results and photo features from v14.1 are unchanged.
 
@@ -128,3 +128,9 @@ PM มีใบมาตรฐาน ตารางรอบงาน และ
 - Each TPM job supports up to 12 private photos tagged Before / After / Additional.
 - Photos can be added after the TPM job is already completed.
 - Editing a completed result does not reopen or change the completed workflow status.
+
+### v14.1.2 — Historical TPM Edit / Photos Fix
+- งาน `Completed` / `Partial` แสดงปุ่ม **Edit / Photos** แม้เป็น Historical TPM ที่ไม่มี `ij_tpm_executions` เดิม
+- Historical TPM สามารถเพิ่มรูปอย่างเดียวได้ โดยไม่บังคับกรอก Work Result
+- ถ้ากรอกผลย้อนหลัง ระบบจะสร้าง Execution record ให้โดยอัตโนมัติและคงสถานะงานเดิม
+- รองรับ Before / After / Additional photos เหมือนงาน TPM ปกติ
