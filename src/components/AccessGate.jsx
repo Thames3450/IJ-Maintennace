@@ -1,4 +1,3 @@
-import {setSessionToken} from '../lib/employeeSession.js'
 import React,{useState} from 'react'
 import {supabase} from '../lib/supabase.js'
 import {Button,FormError,SelectMenu} from './UI.jsx'
@@ -26,14 +25,13 @@ export default function AccessGate({onApproved,initialCode=''}){
   const normalized=()=>code.trim().toUpperCase()
   const check=async()=>{
     const employeeCode=normalized();setError('')
-    if(busy)return
-    if(!/^[0-9]{4,12}$/.test(employeeCode))return setError('กรุณากรอกรหัสพนักงาน 4–12 หลัก')
+    if(!employeeCode)return setError('กรุณากรอกรหัสพนักงาน')
     setBusy(true)
     try{
-      const {data,error:loginError}=await supabase.rpc('ij_session_login',{p_employee_code:employeeCode})
+      const {data,error:loginError}=await supabase.rpc('ij_access_login',{p_employee_code:employeeCode})
       if(loginError)throw loginError
-      const session=firstRow(data),profile=session?.profile
-      if(profile?.id&&session.token){setSessionToken(session.token);await onApproved(profile);return}
+      const profile=firstRow(data)
+      if(profile?.id){onApproved(profile);return}
       const {data:statusData,error:statusError}=await supabase.rpc('ij_access_request_status',{p_employee_code:employeeCode})
       if(statusError)throw statusError
       const request=firstRow(statusData)
@@ -62,7 +60,7 @@ export default function AccessGate({onApproved,initialCode=''}){
       {mode==='login'&&<>
         <div className="access-heading"><span className="access-icon"><LockKeyhole size={24}/></span><div><h1>เข้าสู่ระบบ</h1><p>Employee ID Login · ใช้รหัสพนักงาน</p></div></div>
         <p className="access-copy">กรอกรหัสพนักงานเพื่อเปิดหน้าระบบตามตำแหน่งของคุณ</p>
-        <label className="access-field">Employee ID <small>รหัสพนักงาน</small><input autoFocus maxLength={12} disabled={busy} inputMode="numeric" autoComplete="username" value={code} onChange={e=>setCode(e.target.value)} onKeyDown={e=>e.key==='Enter'&&check()} placeholder="กรอกรหัสพนักงาน"/></label>
+        <label className="access-field">Employee ID <small>รหัสพนักงาน</small><input autoFocus inputMode="numeric" autoComplete="username" value={code} onChange={e=>setCode(e.target.value)} onKeyDown={e=>e.key==='Enter'&&check()} placeholder="เช่น 680470"/></label>
         <FormError message={error}/>
         <Button loading={busy} className="access-primary" icon={LockKeyhole} onClick={check}>เข้าสู่ระบบ <small>Sign in</small></Button>
         <p className="access-help">ถ้ายังไม่มีข้อมูล ระบบจะเปิดหน้าลงทะเบียนให้โดยอัตโนมัติ</p>

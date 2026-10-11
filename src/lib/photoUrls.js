@@ -1,5 +1,5 @@
 export const PHOTO_URL_LIFETIME=3600
-const PHOTO_BUCKETS=new Set(['ij-inspection-photos','ij-defect-photos'])
+const PHOTO_BUCKETS=new Set(['ij-inspection-photos','ij-defect-photos','ij-tpm-photos'])
 
 export function photoLocation(photo,defaultBucket='ij-inspection-photos'){
  let bucket=photo.storage_bucket||defaultBucket,path=photo.storage_path||''

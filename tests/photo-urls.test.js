@@ -39,3 +39,7 @@ test('missing paths and unrelated buckets show an error without signing unrelate
  const {client,calls}=fixture(),rows=await resolvePhotoUrls(client,[{public_url:'https://example.com/file.jpg'},{storage_bucket:'other-department',storage_path:'photo.jpg'}])
  assert.equal(calls.length,0);assert.ok(rows.every(r=>!r.signed_url&&r.photo_error));assert.deepEqual(await resolvePhotoUrls(client,[]),[])
 })
+test('TPM photo bucket is treated as a private supported IJ bucket',async()=>{
+ const {client,calls}=fixture(),rows=await resolvePhotoUrls(client,[{storage_bucket:'ij-tpm-photos',storage_path:'650T-14/job-1/after.jpg'}],{defaultBucket:'ij-tpm-photos'})
+ assert.equal(calls.length,1);assert.equal(calls[0].bucket,'ij-tpm-photos');assert.equal(rows[0].photo_error,null);assert.match(rows[0].signed_url,/\/sign\/ij-tpm-photos\//)
+})

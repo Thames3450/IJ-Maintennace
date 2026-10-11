@@ -1,4 +1,3 @@
-import {sessionToken,setSessionToken} from './lib/employeeSession.js'
 import React, { useCallback, useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase.js'
 import {readPaged} from './lib/readPaged.js'
@@ -68,6 +67,7 @@ export default function App(){
   const [planSource,setPlanSource]=useState(null)
   const [planInitialDate,setPlanInitialDate]=useState('')
   const [finishJob,setFinishJob]=useState(null)
+  const [editJob,setEditJob]=useState(null)
   const [findingJob,setFindingJob]=useState(null)
   const [findingOpen,setFindingOpen]=useState(false)
   const [historyFocus,setHistoryFocus]=useState(()=>new URLSearchParams(window.location.hash.split('?')[1]||'').get('machine')||'')
@@ -88,6 +88,7 @@ export default function App(){
         ['deletedRecords',supabase.from('ij_deleted_records').select('*').eq('department_id',dept.id)],
         ['machines',supabase.from('machines').select('id,machine_no,machine_name,area,section,criticality,equipment_type,has_robot,department_id,department_code,target_mtbf_hr,target_mttr_min,planned_hours_month').eq('department_code','IJ').eq('is_active',true).order('machine_no')],
         ['jobs',supabase.from('ij_tpm_jobs').select('*, machines(id,machine_no,machine_name,area,criticality), ij_tpm_executions(*)').eq('department_id',dept.id).order('planned_date',{ascending:false}).order('sequence_no',{ascending:true}).limit(1800)],
+        ['tpmAttachments',supabase.from('ij_tpm_job_attachments').select('*').eq('department_id',dept.id).order('created_at',{ascending:false}).limit(6000)],
         ['repairs',supabase.from('repair_reports').select('id,department_id,machine_id,record_no,machine_no_snapshot,machine_name_snapshot,symptom,cause,action_taken,spare_parts,status,started_at,finished_at,loss_time_min,technician_name_snapshot,problem_type,severity,remark,source_system').eq('department_id',dept.id).is('deleted_at',null).gte('started_at',since.toISOString()).order('started_at',{ascending:false}).limit(3000)],
         ['findings',supabase.from('ij_tpm_findings').select('*, machines(id,machine_no,machine_name)').eq('department_id',dept.id).order('created_at',{ascending:false}).limit(1600)],
         ['findingAttachments',supabase.from('ij_finding_attachments').select('*').eq('department_id',dept.id).order('created_at',{ascending:false}).limit(4000)],
@@ -104,7 +105,7 @@ export default function App(){
         ['spares',supabase.from('spare_requests').select('*, machine:machines(id,machine_no,machine_name)').eq('department_id',dept.id).order('created_at',{ascending:false}).limit(1500)],
         ['kpi',supabase.from('kpi_settings').select('*').eq('dept_code','IJ').order('updated_at',{ascending:false})]
       ]
-      const results=await Promise.all(modules.map(async([name,q])=>{const caps={jobs:1800,repairs:3000,findings:1600,findingAttachments:4000,inspections:1500,opportunities:1000,spares:1500,pmSchedule:2000};const result=await readPaged(q.order('id'),caps[name]||10000);if(result.error)console.error(`[IJ] load ${name} failed`,result.error);return[name,result]}))
+      const results=await Promise.all(modules.map(async([name,q])=>{const caps={jobs:1800,tpmAttachments:6000,repairs:3000,findings:1600,findingAttachments:4000,inspections:1500,opportunities:1000,spares:1500,pmSchedule:2000};const result=await readPaged(q.order('id'),caps[name]||10000);if(result.error)console.error(`[IJ] load ${name} failed`,result.error);return[name,result]}))
       if(sequence!==loadSequence.current)return false
       const map=Object.fromEntries(results)
       const listReady=!map.deletedRecords.error&&!map.deletedRecords.capped
@@ -147,6 +148,15 @@ export default function App(){
       if(listReady&&!map.jobs.error){
         let enriched=map.jobs.data||[]
         try{
+          const rawAttachments=!map.tpmAttachments?.error?(map.tpmAttachments?.data||[]):[]
+          const resolvedAttachments=rawAttachments.length?await resolvePhotoUrls(supabase,rawAttachments,{defaultBucket:'ij-tpm-photos'}):[]
+          if(sequence!==loadSequence.current)return false
+          if(resolvedAttachments.some(p=>p.photo_error))failures.push('TPM photo previews')
+          const photosByJob=new Map()
+          resolvedAttachments.forEach(a=>{if(!photosByJob.has(a.job_id))photosByJob.set(a.job_id,[]);photosByJob.get(a.job_id).push(a)})
+          enriched=enriched.map(j=>({...j,tpm_attachments:photosByJob.get(j.id)||[]}))
+        }catch(e){failures.push('TPM photos');console.error('[IJ] TPM photo merge failed',e);enriched=enriched.map(j=>({...j,tpm_attachments:[]}))}
+        try{
           const {data:assignees,error}=await readPaged(supabase.from('ij_tpm_job_assignees').select('id,job_id,profile_id,is_lead').order('id'),7000)
           if(error)throw error
           const jobIds=new Set(enriched.map(j=>j.id));const rel=(assignees||[]).filter(a=>jobIds.has(a.job_id))
@@ -165,40 +175,24 @@ export default function App(){
     if(!p?.id)return
     localStorage.setItem('ij_employee_code',p.employee_code||'')
     setProfile(p)
-    const wanted=window.location.hash&&window.location.hash!=='#menu'?pageFromHash():defaultPageForRole(p.role)
+    const wanted=pageFromHash()
     const landing=canOpenPage(p.role,wanted)?wanted:defaultPageForRole(p.role)
-    setPageState(landing)
-    if(window.location.hash!==`#${landing}`&&!window.location.hash.includes('?'))window.location.hash=landing
+    if(landing!==wanted){window.location.hash=landing;setPageState(landing)}
     await loadAll(p)
   },[loadAll])
 
-  const logout=useCallback(async()=>{
-    const request=supabase.rpc('ij_session_logout').then(()=>{}).catch(()=>{})
-    // Fetch has captured the outgoing session before clearing it.
-    await Promise.race([request,new Promise(resolve=>setTimeout(resolve,3000))])
-    setSessionToken('');localStorage.removeItem('ij_employee_code');++loadSequence.current
-    setProfile(null);setDepartment(null);setMachines([]);setJobs([]);setTechnicians([]);setDataErrors([])
-    setRepairs([]);setFindings([]);setInspections([]);setSpareRequests([]);setPmOrders([]);setPmStandards([]);setOpportunities([])
-    setPlanOpen(false);setFinishJob(null);setFindingOpen(false);setDeleteTarget(null);setEditingGroup(null);setPlanSource(null)
-    window.location.hash='menu';setPageState('menu')
+  const logout=useCallback(()=>{
+    localStorage.removeItem('ij_employee_code');setProfile(null);setDepartment(null);setMachines([]);setJobs([]);setTechnicians([]);setDataErrors([]);window.location.hash='menu';setPageState('menu')
   },[])
 
   const boot=useCallback(async()=>{
     setLoading(true)
     try{
-      if(sessionToken()){const {data,error}=await supabase.rpc('ij_session_current');if(error)throw error;if(data?.id)await enterSystem(data);else setSessionToken('')}
-    }catch(e){console.error(e);setSessionToken('')}finally{setLoading(false)}
+      const code=localStorage.getItem('ij_employee_code')
+      if(code){const {data,error}=await supabase.rpc('ij_access_login',{p_employee_code:code});if(error)throw error;const p=Array.isArray(data)?data[0]:data;if(p?.id)await enterSystem(p);else localStorage.removeItem('ij_employee_code')}
+    }catch(e){console.error(e);localStorage.removeItem('ij_employee_code')}finally{setLoading(false)}
   },[enterSystem])
   useEffect(()=>{boot()},[])
-  useEffect(()=>{
-    if(!profile)return
-    let cancelled=false
-    const verify=async()=>{const {data,error}=await supabase.rpc('ij_session_current');if(cancelled||error)return;if(!data?.id){await logout();return}setProfile(data)}
-    const timer=setInterval(verify,60000),visible=()=>{if(document.visibilityState==='visible')verify()}
-    document.addEventListener('visibilitychange',visible)
-    return()=>{cancelled=true;clearInterval(timer);document.removeEventListener('visibilitychange',visible)}
-  },[profile?.id,logout])
-
   useEffect(()=>{if(profile&&!canOpenPage(profile.role,page))setPage(defaultPageForRole(profile.role))},[profile,page])
 
   const openNewPlan=(date='')=>{if(!isEngineer(profile?.role))return notify('เฉพาะ Engineer / Admin ที่สร้างแผนได้','error');const chosen=typeof date==='string'?date:'';setEditingGroup(null);setPlanSource(null);setPlanInitialDate(chosen);setPlanOpen(true)}
@@ -266,11 +260,65 @@ export default function App(){
     const stop=nonNegative(form.actual_stop_min,'เวลาหยุดจริง')
     jobLocks.current.add(job.id)
     try{
-      const result=await workflowRPC('ij_tpm_finish_job',{p_job_id:job.id,p_result:{...form,actual_stop_min:stop}})
+      const {new_photos,deleted_photo_ids,...resultForm}=form
+      const result=await workflowRPC('ij_tpm_finish_job',{p_job_id:job.id,p_result:{...resultForm,actual_stop_min:stop}})
+      const photoWarnings=await syncTpmPhotos(job,{new_photos,deleted_photo_ids})
       await loadAll(profile)
-      notify(result?.finding_status==='closed'?'ปิดงาน TPM และงานติดตามที่เชื่อมไว้แล้ว':form.completion_status==='partial'?'บันทึกผลบางส่วนแล้ว · งานติดตามยังเปิดให้ทำต่อ':result?.finding_status==='verification'?'บันทึกผล TPM แล้ว · งานติดตามรอตรวจยืนยัน':'บันทึกผล TPM แล้ว')
+      const base=result?.finding_status==='closed'?'ปิดงาน TPM และงานติดตามที่เชื่อมไว้แล้ว':form.completion_status==='partial'?'บันทึกผลบางส่วนแล้ว · งานติดตามยังเปิดให้ทำต่อ':result?.finding_status==='verification'?'บันทึกผล TPM แล้ว · งานติดตามรอตรวจยืนยัน':'บันทึกผล TPM แล้ว'
+      notify(photoWarnings.length?`${base} แต่รูปบางรูปอัปโหลดไม่สำเร็จ: ${photoWarnings.join(', ')}`:base,photoWarnings.length?'error':'ok')
     }finally{jobLocks.current.delete(job.id)}
   }
+
+  const syncTpmPhotos=async(job,form)=>{
+    const newPhotos=(form.new_photos||[]).filter(p=>p?.file)
+    const deletedIds=[...new Set(form.deleted_photo_ids||[])]
+    const warnings=[]
+    if(deletedIds.length){
+      const existing=(job.tpm_attachments||[]).filter(p=>deletedIds.includes(p.id))
+      const paths=existing.map(p=>p.storage_path).filter(Boolean)
+      const {error:metaError}=await supabase.from('ij_tpm_job_attachments').delete().in('id',deletedIds)
+      if(metaError)warnings.push('ลบรายการรูปเก่าไม่สำเร็จ')
+      else if(paths.length){
+        const {error:storageError}=await supabase.storage.from('ij-tpm-photos').remove(paths)
+        if(storageError)warnings.push('ลบไฟล์รูปเก่าไม่ครบ')
+      }
+    }
+    if(newPhotos.length){
+      const machineCode=(job.machines?.machine_no||'unknown-machine').replace(/[^a-zA-Z0-9_-]/g,'_')
+      for(let i=0;i<newPhotos.length;i++){
+        const p=newPhotos[i]
+        try{
+          const ext=(p.file?.name?.split('.').pop()||'jpg').toLowerCase()
+          const path=`${machineCode}/${job.id}/${Date.now()}_${i+1}.${ext}`
+          const {error:uploadError}=await supabase.storage.from('ij-tpm-photos').upload(path,p.file,{cacheControl:'3600',upsert:false,contentType:p.file.type||'image/jpeg'})
+          if(uploadError)throw uploadError
+          const {error:metaError}=await supabase.from('ij_tpm_job_attachments').insert({department_id:department.id,job_id:job.id,machine_id:job.machine_id,photo_type:p.photo_type||'additional',caption:p.caption||null,file_name:p.name||p.file.name||`tpm_${i+1}.${ext}`,storage_bucket:'ij-tpm-photos',storage_path:path,mime_type:p.type||p.file.type||'image/jpeg',file_size:p.size||p.file.size||null,uploaded_by:profile.id})
+          if(metaError){await supabase.storage.from('ij-tpm-photos').remove([path]);throw metaError}
+        }catch(e){console.error('[IJ] TPM photo upload failed',e);warnings.push(p.name||`รูป ${i+1}`)}
+      }
+    }
+    return warnings
+  }
+
+  const editJobResult=async(job,form)=>{
+    if(!isMaintainer(profile?.role))throw new Error('ตำแหน่งนี้ไม่สามารถแก้ไขผล Maintenance ได้')
+    const assigned=(job.ij_tpm_job_assignees||[]).some(a=>a.profile_id===profile.id)
+    if(!isEngineer(profile.role)&&!assigned)throw new Error('งานนี้ไม่ได้มอบหมายให้คุณ')
+    const execution=(job.ij_tpm_executions||[])[0]
+    if(!execution?.id)throw new Error('ยังไม่มีผลการทำงานให้แก้ไข')
+    if(!form.result_summary?.trim())throw new Error('กรุณาระบุผลการทำงานจริง')
+    const stop=nonNegative(form.actual_stop_min,'เวลาหยุดจริง')
+    if(jobLocks.current.has(job.id))throw new Error('กำลังบันทึกงานนี้ กรุณารอสักครู่')
+    jobLocks.current.add(job.id)
+    try{
+      const {new_photos,deleted_photo_ids,verification_note,close_linked_finding,...editable}=form
+      await confirmedUpdate(supabase.from('ij_tpm_executions').update({result_summary:editable.result_summary.trim(),actual_stop_min:stop,parts_used:editable.parts_used||null,execution_note:editable.execution_note||null,abnormal_found:!!editable.abnormal_found,follow_up_required:!!editable.follow_up_required,updated_by:profile.id,updated_at:new Date().toISOString()}).eq('id',execution.id))
+      const warnings=await syncTpmPhotos(job,{new_photos,deleted_photo_ids})
+      await loadAll(profile)
+      notify(warnings.length?`แก้ไขผล TPM แล้ว แต่รูปบางรูปอัปโหลดไม่สำเร็จ: ${warnings.join(', ')}`:'แก้ไขผล TPM และรูปภาพแล้ว',warnings.length?'error':'ok')
+    }finally{jobLocks.current.delete(job.id)}
+  }
+
   const postponeJob=async job=>{
     const date=prompt('เลื่อนงานไปวันที่ (YYYY-MM-DD)',job.planned_date);if(!date)return
     if(!validDate(date))return notify('วันที่ไม่ถูกต้อง กรุณาใช้ YYYY-MM-DD','error')
@@ -376,7 +424,7 @@ export default function App(){
     menu:<MainMenu profile={profile} jobs={jobs} repairs={repairs} findings={findings} spares={spareRequests} planner={rolePlanner(profile.role)} onNewFinding={()=>{setFindingJob(null);setFindingOpen(true)}} onGo={setPage} onNewPlan={openNewPlan}/>,
     dashboard:<Dashboard jobs={jobs} repairs={repairs} findings={findings} inspections={inspections} pmSchedule={pmSchedule} kpiSettings={kpiSettings} machines={machines} onGo={setPage} onEditGroup={isEngineer(profile.role)?openEditGroup:()=>setPage('weekly')}/>,
     assets:<Assets machines={machines} jobs={jobs} repairs={repairs} findings={findings} inspections={inspections} onOpenMachine={openMachine}/>,
-    weekly:<WeeklyPlan pmSchedule={pmSchedule} profile={profile} jobs={jobs.filter(j=>j.work_type!=='pm_scheduled')} machines={machines} weekStart={weekStart} setWeekStart={setWeekStart} onNewPlan={openNewPlan} onEditGroup={openEditGroup} onStart={startJob} onFinish={setFinishJob} onFinding={j=>{setFindingJob(j);setFindingOpen(true)}} onPostpone={postponeJob} initialJob={tpmFocus} onConsumedInitial={()=>setTpmFocus(null)} onDelete={rolePlanner(profile.role)?r=>requestDelete('tpm_job',r):null} onPlanDecision={planDecision}/>,
+    weekly:<WeeklyPlan profile={profile} jobs={jobs.filter(j=>j.work_type!=='pm_scheduled')} machines={machines} weekStart={weekStart} setWeekStart={setWeekStart} onNewPlan={openNewPlan} onEditGroup={openEditGroup} onStart={startJob} onFinish={setFinishJob} onEditResult={setEditJob} onFinding={j=>{setFindingJob(j);setFindingOpen(true)}} onPostpone={postponeJob} initialJob={tpmFocus} onConsumedInitial={()=>setTpmFocus(null)} onDelete={rolePlanner(profile.role)?r=>requestDelete('tpm_job',r):null} onPlanDecision={planDecision}/>,
     inspection:<Inspection profile={profile} machines={machines} inspections={inspections} templates={inspectionTemplates} templateItems={inspectionItems} onSaveInspection={saveInspection} onOpenMachine={openMachine} onDelete={rolePlanner(profile.role)?r=>requestDelete('inspection',r):null}/>,
     defects:<Defects profile={profile} findings={findings} machines={machines} onNew={()=>{setFindingJob(null);setFindingOpen(true)}} onCreateTPM={f=>openSource('finding',f)} onFollowUp={openFollowUp} onDelete={rolePlanner(profile.role)?r=>requestDelete('finding',r):null}/>,
     followup:<FollowUp profile={profile} findings={findings} technicians={[...technicians,...(technicians.some(t=>t.id===profile.id)?[]:[profile])]} jobs={jobs} onOpenTPM={openTPM} onDelete={rolePlanner(profile.role)?r=>requestDelete('finding',r):null} onSaveAction={saveFollowUpAction} onCreateTPM={f=>openSource('finding',f)} initialFinding={followupFocus} onConsumedInitial={()=>setFollowupFocus('')}/>,
@@ -391,10 +439,10 @@ export default function App(){
   }[page]
 
   return <>
-    <Layout dataErrors={dataErrors} lastSynced={lastSync} page={page} setPage={setPage} profile={profile} onLogout={logout} onRefresh={()=>loadAll(profile)} onNewPlan={openNewPlan} planner={rolePlanner(profile.role)}>{refreshing&&<div className="sync-bar"><i/></div>}{dataErrors.length>0&&<div className="form-error" role="alert">โหลดข้อมูลบางส่วนไม่สำเร็จ ({dataErrors.join(', ')}) ข้อมูลสรุปอาจไม่ครบ <button type="button" onClick={()=>loadAll(profile)}>ลองโหลดใหม่</button></div>}{canOpenPage(profile.role,page)?pageNode:null}</Layout>
+    <Layout dataErrors={dataErrors} lastSynced={lastSync} page={page} setPage={setPage} profile={profile} onLogout={logout} onRefresh={()=>loadAll(profile)} onNewPlan={openNewPlan} planner={rolePlanner(profile.role)}>{refreshing&&<div className="sync-bar"><i/></div>}{dataErrors.length>0&&<div className="form-error" role="alert">โหลดข้อมูลบางส่วนไม่สำเร็จ ({dataErrors.join(', ')}) ข้อมูลสรุปอาจไม่ครบ <button type="button" onClick={()=>loadAll(profile)}>ลองโหลดใหม่</button></div>}{pageNode}</Layout>
     {isEngineer(profile.role)&&<PlanBuilder open={planOpen} onClose={()=>{setPlanOpen(false);setPlanInitialDate('')}} machines={machines} technicians={technicians} editingGroup={editingGroup} sourceContext={planSource} initialDate={planInitialDate} onSave={savePlan}/>}
     <DeleteConfirmModal target={deleteTarget} onClose={()=>setDeleteTarget(null)} onDelete={deleteRecords}/>
-    <ExecutionModal linkedFinding={findings.find(f=>f.id===finishJob?.source_finding_id)} otherOpenJobs={jobs.filter(j=>j.id!==finishJob?.id&&j.source_finding_id===finishJob?.source_finding_id&&!['completed','cancelled'].includes(j.job_status)).length} job={finishJob} open={!!finishJob} onClose={()=>setFinishJob(null)} onFinish={completeJob}/>
+    <ExecutionModal linkedFinding={findings.find(f=>f.id===(editJob||finishJob)?.source_finding_id)} otherOpenJobs={jobs.filter(j=>j.id!==(editJob||finishJob)?.id&&j.source_finding_id===(editJob||finishJob)?.source_finding_id&&!['completed','cancelled'].includes(j.job_status)).length} job={editJob||finishJob} editOnly={!!editJob} open={!!(editJob||finishJob)} onClose={()=>{setFinishJob(null);setEditJob(null)}} onFinish={editJob?editJobResult:completeJob}/>
     <FindingModal open={findingOpen} onClose={()=>setFindingOpen(false)} machines={machines} job={findingJob} profile={profile} onSave={saveFinding}/>
     {toast&&<div className={`toast-pro ${toast.type}`}>{toast.message}</div>}
   </>

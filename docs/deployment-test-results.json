@@ -33,6 +33,5 @@
   "production_records_changed": 0,
   "github_hosted_deployment_verified": false,
   "photo_frontend_verified": true,
-  "browser_passed": 47,
-  "release_scope": "Historical v13.11 verification; not evidence of live v14.1 deployment"
+  "browser_passed": 47
 }
