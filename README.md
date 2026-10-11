@@ -1,3 +1,7 @@
+# IJ Maintenance v14.1.1
+
+**Hotfix:** Employee-ID login now creates an IJ web session and automatically sends `x-ij-session` with every Supabase request. This fixes the post-login `Cannot open IJ Maintenance` screen caused by session-restricted RLS. TPM editable results and photo features from v14.1 are unchanged.
+
 # IJ Maintenance v14.0 — Employee ID Login + Role-based Workflow
 
 รุ่นนี้ยึด v13.11.3 เป็น Master แล้วเพิ่มการเข้าสู่ระบบด้วย **รหัสพนักงานอย่างเดียว** และแบ่งหน้ากับสิทธิ์ตามตำแหน่ง Engineer/Admin, Technician, Manager และ Production/Planning

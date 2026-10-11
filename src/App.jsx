@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react'
-import { supabase } from './lib/supabase.js'
+import { supabase, getIJSessionToken, setIJSessionToken, clearIJSessionToken } from './lib/supabase.js'
 import {readPaged} from './lib/readPaged.js'
 import {resolvePhotoUrls} from './lib/photoUrls.js'
 import {inspectionSummary} from './lib/inspectionChecklist.js'
@@ -181,16 +181,32 @@ export default function App(){
     await loadAll(p)
   },[loadAll])
 
-  const logout=useCallback(()=>{
-    localStorage.removeItem('ij_employee_code');setProfile(null);setDepartment(null);setMachines([]);setJobs([]);setTechnicians([]);setDataErrors([]);window.location.hash='menu';setPageState('menu')
+  const logout=useCallback(async()=>{
+    try{if(getIJSessionToken())await supabase.rpc('ij_session_logout')}catch(e){console.warn('[IJ] logout session cleanup failed',e)}
+    clearIJSessionToken();localStorage.removeItem('ij_employee_code');setProfile(null);setDepartment(null);setMachines([]);setJobs([]);setTechnicians([]);setDataErrors([]);window.location.hash='menu';setPageState('menu')
   },[])
 
   const boot=useCallback(async()=>{
     setLoading(true)
     try{
       const code=localStorage.getItem('ij_employee_code')
-      if(code){const {data,error}=await supabase.rpc('ij_access_login',{p_employee_code:code});if(error)throw error;const p=Array.isArray(data)?data[0]:data;if(p?.id)await enterSystem(p);else localStorage.removeItem('ij_employee_code')}
-    }catch(e){console.error(e);localStorage.removeItem('ij_employee_code')}finally{setLoading(false)}
+      let p=null
+      if(getIJSessionToken()){
+        const {data,error}=await supabase.rpc('ij_session_current')
+        if(!error&&data?.id)p=data
+        else clearIJSessionToken()
+      }
+      // Preserve the previous convenience behaviour: if the 12-hour session
+      // expired but this browser still remembers the employee code, create a
+      // fresh employee-ID session automatically.
+      if(!p&&code){
+        const {data,error}=await supabase.rpc('ij_session_login',{p_employee_code:code})
+        if(error)throw error
+        const session=Array.isArray(data)?data[0]:data
+        if(session?.profile?.id&&session?.token){setIJSessionToken(session.token);p=session.profile}
+      }
+      if(p)await enterSystem(p);else if(code)localStorage.removeItem('ij_employee_code')
+    }catch(e){console.error(e);clearIJSessionToken();localStorage.removeItem('ij_employee_code')}finally{setLoading(false)}
   },[enterSystem])
   useEffect(()=>{boot()},[])
   useEffect(()=>{if(profile&&!canOpenPage(profile.role,page))setPage(defaultPageForRole(profile.role))},[profile,page])

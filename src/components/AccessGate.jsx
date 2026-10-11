@@ -1,5 +1,5 @@
 import React,{useState} from 'react'
-import {supabase} from '../lib/supabase.js'
+import {supabase,setIJSessionToken,clearIJSessionToken} from '../lib/supabase.js'
 import {Button,FormError,SelectMenu} from './UI.jsx'
 import {CheckCircle2,LockKeyhole,UserRound,RefreshCcw} from '../icons.jsx'
 
@@ -28,10 +28,12 @@ export default function AccessGate({onApproved,initialCode=''}){
     if(!employeeCode)return setError('กรุณากรอกรหัสพนักงาน')
     setBusy(true)
     try{
-      const {data,error:loginError}=await supabase.rpc('ij_access_login',{p_employee_code:employeeCode})
+      clearIJSessionToken()
+      const {data,error:loginError}=await supabase.rpc('ij_session_login',{p_employee_code:employeeCode})
       if(loginError)throw loginError
-      const profile=firstRow(data)
-      if(profile?.id){onApproved(profile);return}
+      const session=firstRow(data)
+      const profile=session?.profile
+      if(profile?.id&&session?.token){setIJSessionToken(session.token);onApproved(profile);return}
       const {data:statusData,error:statusError}=await supabase.rpc('ij_access_request_status',{p_employee_code:employeeCode})
       if(statusError)throw statusError
       const request=firstRow(statusData)
